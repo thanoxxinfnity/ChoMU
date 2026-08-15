@@ -29,6 +29,15 @@ export function HistoryPage() {
 
   useEffect(() => () => { if (selectedUrl) URL.revokeObjectURL(selectedUrl) }, [selectedUrl])
 
+  useEffect(() => {
+    if (!selected) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelected(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selected])
+
   const handleDelete = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation()
     await deleteGeneration(id)
@@ -61,10 +70,13 @@ export function HistoryPage() {
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {records.map((r) => (
-            <button
+            <div
               key={r.id}
+              role="button"
+              tabIndex={0}
               onClick={() => setSelected(r)}
-              className="group relative aspect-square overflow-hidden rounded-2xl border border-black/10 bg-white text-left shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-neutral-900"
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelected(r)}
+              className="group relative aspect-square cursor-pointer overflow-hidden rounded-2xl border border-black/10 bg-white text-left shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-neutral-900"
             >
               {r.status === 'success' && r.thumbnail ? (
                 <img src={r.thumbnail} className="h-full w-full object-cover" />
@@ -99,7 +111,7 @@ export function HistoryPage() {
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
-            </button>
+            </div>
           ))}
         </div>
       )}

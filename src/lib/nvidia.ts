@@ -118,7 +118,7 @@ async function postTrellisWithRetry(
   data: unknown,
   onRetry?: () => void,
 ): Promise<{ status: number; data: unknown }> {
-  const maxAttempts = 2
+  const maxAttempts = 3
   let lastRes: { status: number; data: unknown } | null = null
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const res = await apiRequest({ url: TRELLIS_URL, method: 'POST', headers, data, timeoutMs: 300_000 })

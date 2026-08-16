@@ -140,9 +140,9 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
             ApiKeyCard(
                 title = "NVIDIA TRELLIS API key",
                 description = "Used only when \"NVIDIA TRELLIS\" is selected above. Free key at " +
-                    "build.nvidia.com (microsoft/trellis) — starts with \"nvapi-\". Note: NVIDIA's " +
-                    "free preview currently only accepts its own sample images and has been " +
-                    "returning server errors — see the notice below.",
+                    "build.nvidia.com (microsoft/trellis) — starts with \"nvapi-\". Text-to-3D " +
+                    "(the \"From Text\" tab) works well on NVIDIA. Image-to-3D from your own " +
+                    "photos does not — see the notice below.",
                 keyValue = nvidiaKey,
                 onKeyChange = { nvidiaKey = it },
                 placeholder = "nvapi-…",
@@ -244,13 +244,14 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
                         Text("About NVIDIA TRELLIS right now", style = MaterialTheme.typography.titleSmall)
                     }
                     Text(
-                        "NVIDIA's free/preview TRELLIS endpoint currently only accepts its own " +
-                            "sample images, not photos you upload — this is documented by NVIDIA " +
-                            "itself, not a bug in this app. It has also been intermittently " +
-                            "returning server errors for other developers. If Image-to-3D fails " +
-                            "on NVIDIA, switch the provider above to fal.ai or Pollinations, both " +
-                            "of which accept real photos today — Pollinations also has a free tier " +
-                            "and supports text-to-3D directly.",
+                        "NVIDIA's TRELLIS is split by direction: Text-to-3D (\"From Text\") " +
+                            "works well. Image-to-3D from a photo you upload does not — NVIDIA's " +
+                            "free/preview endpoint currently only accepts its own sample images, " +
+                            "not real uploads. This is documented by NVIDIA itself, not a bug in " +
+                            "this app; the endpoint has also been intermittently returning server " +
+                            "errors for other developers. For Image-to-3D from your own photos, " +
+                            "switch the provider above to fal.ai (paid, reliable) or Pollinations " +
+                            "(free tier, also supports text-to-3D).",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

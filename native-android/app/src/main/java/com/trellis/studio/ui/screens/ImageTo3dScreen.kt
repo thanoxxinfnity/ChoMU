@@ -95,6 +95,13 @@ class ImageTo3dViewModel(application: Application) : AndroidViewModel(applicatio
 
     val provider: StateFlow<Model3DProvider> = container.settingsRepository.provider
 
+    /** Whether the currently active provider implements real text-to-3D. */
+    fun supportsTextTo3d(provider: Model3DProvider): Boolean = when (provider) {
+        Model3DProvider.NVIDIA_TRELLIS -> container.trellisRepository.supportsTextTo3d
+        Model3DProvider.FAL_TRELLIS -> container.falRepository.supportsTextTo3d
+        Model3DProvider.POLLINATIONS_TRELLIS -> container.pollinationsTrellisRepository.supportsTextTo3d
+    }
+
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val messages: SharedFlow<String> = _messages
 
@@ -223,8 +230,9 @@ fun ImageTo3dScreen(viewModel: ImageTo3dViewModel = viewModel()) {
     val inputMode by viewModel.inputMode.collectAsState()
     val textPrompt by viewModel.textPrompt.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    // Only Pollinations currently implements real text-to-3D (see Model3DRepository).
-    val supportsTextTo3d = provider == Model3DProvider.POLLINATIONS_TRELLIS
+    // NVIDIA TRELLIS and Pollinations both implement real text-to-3D; fal.ai's TRELLIS
+    // model is image-only (see Model3DRepository / FalRepository).
+    val supportsTextTo3d = remember(provider) { viewModel.supportsTextTo3d(provider) }
 
     LaunchedEffect(Unit) { viewModel.consumePendingImage() }
     LaunchedEffect(Unit) {

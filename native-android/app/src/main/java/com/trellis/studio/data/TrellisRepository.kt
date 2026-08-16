@@ -20,15 +20,48 @@ class TrellisRepository(
     private val apiKeyProvider: () -> String
 ) : Model3DRepository {
 
+    /**
+     * NVIDIA's hosted TRELLIS endpoint genuinely supports prompt-based text-to-3D — its
+     * "image" field is the one that's currently broken for real uploads (only accepts
+     * its own preset example_id gallery), confirmed by directly probing the live API.
+     * "prompt" alone works and returns a real model.
+     */
+    override val supportsTextTo3d: Boolean = true
+
     private val modelsDir: File
         get() = File(context.filesDir, "models").apply { mkdirs() }
 
-    /**
-     * Sends [imageFile] to the NVIDIA TRELLIS endpoint and returns the generated .glb file.
-     * Handles both the synchronous (200) and polled (202 + NVCF-REQID) response flows.
-     */
     override suspend fun generateModel(
         imageFile: File,
+        onStatus: (String) -> Unit
+    ): File {
+        onStatus("Uploading image…")
+        val imageBytes = imageFile.readBytes()
+        val mime = when {
+            imageBytes.size >= 8 &&
+                imageBytes[0] == 0x89.toByte() && imageBytes[1] == 'P'.code.toByte() -> "image/png"
+            else -> "image/jpeg"
+        }
+        val dataUri = "data:$mime;base64," + Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+        return generate(JSONObject().put("image", dataUri), onStatus)
+    }
+
+    /**
+     * Text-to-3D via the same endpoint's "prompt" field. Sampling-step and cfg-scale
+     * bounds below are enforced server-side — confirmed directly against the live API:
+     * ss_cfg_scale/slat_cfg_scale must be in (1, 10], ss_sampling_steps/slat_sampling_steps
+     * in [10, 50]. Left unset here so NVIDIA's own defaults (12 steps, cfg 7.5/3) apply.
+     */
+    override suspend fun generateFromPrompt(
+        prompt: String,
+        onStatus: (String) -> Unit
+    ): File {
+        onStatus("Preparing…")
+        return generate(JSONObject().put("prompt", prompt), onStatus)
+    }
+
+    private suspend fun generate(
+        payload: JSONObject,
         onStatus: (String) -> Unit
     ): File = withContext(Dispatchers.IO) {
         val apiKey = apiKeyProvider()
@@ -38,17 +71,7 @@ class TrellisRepository(
             )
         }
 
-        onStatus("Uploading image…")
-        val imageBytes = imageFile.readBytes()
-        val mime = when {
-            imageBytes.size >= 8 &&
-                imageBytes[0] == 0x89.toByte() && imageBytes[1] == 'P'.code.toByte() -> "image/png"
-            else -> "image/jpeg"
-        }
-        val dataUri = "data:$mime;base64," + Base64.encodeToString(imageBytes, Base64.NO_WRAP)
-
-        val payload = JSONObject().put("image", dataUri).toString()
-        val body = payload.toRequestBody("application/json".toMediaType())
+        val body = payload.toString().toRequestBody("application/json".toMediaType())
         val auth = "Bearer $apiKey"
 
         var response = api.generate(GENERATE_URL, auth, body)
@@ -88,8 +111,8 @@ class TrellisRepository(
                         "NVIDIA's free TRELLIS preview endpoint only accepts its own sample " +
                             "images — it cannot process custom photos yet. This is a limit on " +
                             "NVIDIA's side, not something this app can work around. Switch to " +
-                            "\"Pollinations TRELLIS\" or \"fal.ai TRELLIS\" in Settings to use " +
-                            "your own photos."
+                            "\"fal.ai TRELLIS\" in Settings to use your own photos, or use " +
+                            "\"From Text\" here instead — text-to-3D works fine on NVIDIA."
 
                     response.code() == 500 ->
                         "NVIDIA's TRELLIS service returned a server error. Their preview " +
@@ -107,7 +130,21 @@ class TrellisRepository(
         val resultBytes = response.body()?.bytes()
             ?: throw AppException.Api("3D generation returned an empty response.")
         val glbBytes = extractGlb(resultBytes)
-            ?: throw AppException.Api("Could not find a GLB model in the API response.")
+            ?: run {
+                val finishReason = runCatching {
+                    JSONObject(String(resultBytes, Charsets.UTF_8))
+                        .optJSONArray("artifacts")?.optJSONObject(0)?.optString("finishReason")
+                }.getOrNull()?.takeIf { it.isNotBlank() }
+                throw AppException.Api(
+                    if (finishReason == "CONTENT_FILTERED") {
+                        "NVIDIA's safety filter blocked this prompt/image and returned no " +
+                            "model. Try rephrasing — e.g. a \"stylized 3D character\" instead " +
+                            "of a photorealistic real person."
+                    } else {
+                        "Could not find a GLB model in the API response."
+                    }
+                )
+            }
 
         val outFile = File(modelsDir, "model_${System.currentTimeMillis()}.glb")
         outFile.writeBytes(glbBytes)

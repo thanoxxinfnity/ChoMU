@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from './lib/theme'
 import { Sidebar } from './components/Sidebar'
@@ -5,8 +6,13 @@ import { MobileNav } from './components/MobileNav'
 import { GeneratePage } from './pages/Generate'
 import { HistoryPage } from './pages/History'
 import { SettingsPage } from './pages/Settings'
+import { reconcileStalePending } from './lib/history'
 
 export default function App() {
+  useEffect(() => {
+    reconcileStalePending()
+  }, [])
+
   return (
     <ThemeProvider>
       <HashRouter>

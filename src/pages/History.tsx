@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Trash2, Download, X, Type, ImageUp, AlertCircle, Clock, Boxes } from 'lucide-react'
-import { listGenerations, deleteGeneration, updateGeneration } from '../lib/history'
+import { listGenerations, deleteGeneration, updateGeneration, reconcileStalePending } from '../lib/history'
 import type { GenerationRecord } from '../lib/types'
 import { ModelViewer } from '../components/ModelViewer'
 import { ExportMenu } from '../components/ExportMenu'
@@ -14,6 +14,7 @@ export function HistoryPage() {
 
   const refresh = async () => {
     setLoading(true)
+    await reconcileStalePending()
     setRecords(await listGenerations())
     setLoading(false)
   }

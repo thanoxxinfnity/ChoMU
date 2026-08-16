@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Trash2, Download, X, Type, ImageUp, AlertCircle, Clock, Boxes } from 'lucide-react'
+import { Trash2, Download, X, Type, ImageUp, AlertCircle, Clock, Boxes, Image as ImageIcon } from 'lucide-react'
 import { listGenerations, deleteGeneration, updateGeneration, reconcileStalePending } from '../lib/history'
 import type { GenerationRecord } from '../lib/types'
 import { ModelViewer } from '../components/ModelViewer'
@@ -30,7 +30,13 @@ export function HistoryPage() {
     return URL.createObjectURL(selected.glbBlob)
   }, [selected])
 
+  const selectedImageUrl = useMemo(() => {
+    if (!selected?.imageBlob) return null
+    return URL.createObjectURL(selected.imageBlob)
+  }, [selected])
+
   useEffect(() => () => { if (selectedUrl) URL.revokeObjectURL(selectedUrl) }, [selectedUrl])
+  useEffect(() => () => { if (selectedImageUrl) URL.revokeObjectURL(selectedImageUrl) }, [selectedImageUrl])
 
   useEffect(() => {
     if (!selected) return
@@ -98,7 +104,9 @@ export function HistoryPage() {
               )}
 
               <div className="absolute inset-x-0 bottom-0 flex items-center gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6">
-                {r.mode === 'text' ? (
+                {r.kind === 'image' ? (
+                  <ImageIcon className="h-3 w-3 text-white/80" />
+                ) : r.mode === 'text' ? (
                   <Type className="h-3 w-3 text-white/80" />
                 ) : (
                   <ImageUp className="h-3 w-3 text-white/80" />
@@ -130,7 +138,33 @@ export function HistoryPage() {
               </button>
             </div>
             <div className="p-5">
-              {selected.status === 'success' && selectedUrl ? (
+              {selected.status === 'success' && selected.kind === 'image' && selectedImageUrl ? (
+                <>
+                  <img src={selectedImageUrl} className="h-80 w-full rounded-xl object-contain bg-black/5 dark:bg-white/5" />
+                  <div className="mt-4 flex items-center justify-between text-xs">
+                    <span className="text-neutral-500 dark:text-neutral-400">
+                      {new Date(selected.createdAt).toLocaleString()}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={selectedImageUrl}
+                        download="chomu-flux-image.png"
+                        className="flex items-center gap-1.5 rounded-lg bg-violet-500/10 px-3 py-1.5 font-medium text-violet-600 dark:text-violet-300"
+                      >
+                        <Download className="h-3.5 w-3.5" /> {t('generate.export')}
+                      </a>
+                      <button
+                        onClick={() => handleDelete(selected.id)}
+                        className={clsx(
+                          'flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-red-500 hover:bg-red-500/10',
+                        )}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> {t('history.delete')}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : selected.status === 'success' && selectedUrl ? (
                 <>
                   <ModelViewer
                     url={selectedUrl}

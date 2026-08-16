@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Type, ImageUp, Wand2, Loader2, ChevronDown, X, Download, AlertTriangle, ListPlus, Sparkle } from 'lucide-react'
+import { Type, ImageUp, Wand2, Loader2, ChevronDown, X, Download, AlertTriangle, ListPlus, Sparkle, Image as ImageIcon, Box } from 'lucide-react'
 import clsx from 'clsx'
 import { ModelViewer } from '../components/ModelViewer'
 import { ExportMenu } from '../components/ExportMenu'
 import { QueuePanel } from '../components/QueuePanel'
 import { generateFromText, generateFromImage, generateSample, NvidiaApiError } from '../lib/nvidia'
+import { generateImageFlux, PollinationsError } from '../lib/pollinations'
 import { getApiKey } from '../lib/storage'
 import { saveGeneration, newGenerationId, updateGeneration } from '../lib/history'
 import { useQueueStore } from '../lib/queueStore'
@@ -12,7 +13,7 @@ import { DEFAULT_PARAMS, SPEED_PRESETS, type GenerationParams, type GenerationRe
 import { Link } from 'react-router-dom'
 import { useI18n } from '../lib/i18n'
 
-type Mode = 'text' | 'image'
+type Mode = 'text' | 'image' | 'flux'
 
 export function GeneratePage() {
   const { t } = useI18n()
@@ -30,6 +31,11 @@ export function GeneratePage() {
   const [resultSeed, setResultSeed] = useState<number | null>(null)
   const [warmingUp, setWarmingUp] = useState(false)
   const [batchMode, setBatchMode] = useState(false)
+  const [fluxPrompt, setFluxPrompt] = useState('')
+  const [fluxStatus, setFluxStatus] = useState<'idle' | 'generating' | 'done' | 'error'>('idle')
+  const [fluxError, setFluxError] = useState<string | null>(null)
+  const [fluxResultUrl, setFluxResultUrl] = useState<string | null>(null)
+  const [fluxResultBlob, setFluxResultBlob] = useState<Blob | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const currentIdRef = useRef<string | null>(null)
   const enqueueText = useQueueStore((s) => s.enqueueText)
@@ -86,7 +92,7 @@ export function GeneratePage() {
     currentIdRef.current = id
     const record: GenerationRecord = {
       id,
-      mode,
+      mode: mode as 'text' | 'image',
       prompt: mode === 'text' ? prompt.trim() : undefined,
       sourceImage: mode === 'image' ? imagePreview ?? undefined : undefined,
       status: 'pending',
@@ -126,6 +132,56 @@ export function GeneratePage() {
     } finally {
       setWarmingUp(false)
     }
+  }
+
+  const handleGenerateImage = async () => {
+    const prompt = fluxPrompt.trim()
+    if (!prompt) return
+    setFluxError(null)
+    setFluxStatus('generating')
+    setFluxResultUrl(null)
+    setFluxResultBlob(null)
+
+    const id = newGenerationId()
+    const record: GenerationRecord = {
+      id,
+      kind: 'image',
+      mode: 'text',
+      prompt,
+      status: 'pending',
+      createdAt: Date.now(),
+      params: {},
+    }
+    await saveGeneration(record)
+
+    try {
+      const blob = await generateImageFlux(prompt)
+      const url = URL.createObjectURL(blob)
+      setFluxResultUrl(url)
+      setFluxResultBlob(blob)
+      setFluxStatus('done')
+
+      const thumbnail = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(blob)
+      })
+      await saveGeneration({ ...record, status: 'success', finishedAt: Date.now(), imageBlob: blob, thumbnail })
+    } catch (e) {
+      const err = e as PollinationsError
+      setFluxError(err.message)
+      setFluxStatus('error')
+      await saveGeneration({ ...record, status: 'error', finishedAt: Date.now(), error: err.message })
+    }
+  }
+
+  /** Hands the FLUX result over to the Image-to-3D tab, matching the
+   *  "Create → 3D" flow the user asked to mirror from VOID. */
+  const handleMakeIt3D = () => {
+    if (!fluxResultBlob) return
+    const file = new File([fluxResultBlob], 'flux-generated.png', { type: fluxResultBlob.type || 'image/png' })
+    handlePickImage(file)
+    setMode('image')
   }
 
   const handleTrySample = async () => {
@@ -205,9 +261,31 @@ export function GeneratePage() {
             >
               <ImageUp className="h-4 w-4" /> {t('generate.tab.image')}
             </button>
+            <button
+              onClick={() => setMode('flux')}
+              className={clsx(
+                'flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition',
+                mode === 'flux'
+                  ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-800 dark:text-white'
+                  : 'text-neutral-500',
+              )}
+            >
+              <ImageIcon className="h-4 w-4" /> {t('generate.tab.flux')}
+            </button>
           </div>
 
-          {mode === 'text' ? (
+          {mode === 'flux' ? (
+            <div className="space-y-2">
+              <textarea
+                value={fluxPrompt}
+                onChange={(e) => setFluxPrompt(e.target.value)}
+                placeholder={t('generate.flux.placeholder')}
+                rows={4}
+                className="w-full resize-none rounded-2xl border border-black/10 bg-white p-4 text-sm outline-none ring-violet-500/40 focus:ring-2 dark:border-white/10 dark:bg-neutral-900"
+              />
+              <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{t('generate.flux.hint')}</p>
+            </div>
+          ) : mode === 'text' ? (
             <div className="space-y-2">
               <textarea
                 value={prompt}
@@ -266,6 +344,8 @@ export function GeneratePage() {
             </div>
           )}
 
+          {mode !== 'flux' && (
+          <>
           <div>
             <div className="mb-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400">Speed</div>
             <div className="grid grid-cols-3 gap-2">
@@ -349,7 +429,28 @@ export function GeneratePage() {
               </div>
             )}
           </div>
+          </>
+          )}
 
+          {mode === 'flux' ? (
+            <button
+              onClick={handleGenerateImage}
+              disabled={!fluxPrompt.trim() || fluxStatus === 'generating'}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {fluxStatus === 'generating' ? (
+                <>
+                  <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                  {t('generate.generating')}
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="h-4.5 w-4.5" />
+                  {t('generate.flux.generate')}
+                </>
+              )}
+            </button>
+          ) : (
           <div className="flex gap-2">
             {!batchMode && (
               <button
@@ -386,6 +487,7 @@ export function GeneratePage() {
                 : t('generate.addToQueue')}
             </button>
           </div>
+          )}
 
           <div>
             <button
@@ -419,14 +521,52 @@ export function GeneratePage() {
         </div>
 
         <div className="space-y-3">
-          <ModelViewer
-            url={resultUrl}
-            className="aspect-square w-full lg:aspect-auto lg:h-[520px]"
-            onThumbnail={(dataUrl) => {
-              if (currentIdRef.current) updateGeneration(currentIdRef.current, { thumbnail: dataUrl })
-            }}
-          />
-          {resultUrl && resultBlob && (
+          {mode === 'flux' ? (
+            <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl border border-black/10 bg-black/5 lg:aspect-auto lg:h-[520px] dark:border-white/10 dark:bg-white/5">
+              {fluxStatus === 'generating' ? (
+                <div className="flex flex-col items-center gap-2 text-neutral-400">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="text-sm">{t('generate.generating')}</span>
+                </div>
+              ) : fluxResultUrl ? (
+                <img src={fluxResultUrl} className="h-full w-full object-contain" />
+              ) : (
+                <span className="text-sm text-neutral-400">{t('generate.waiting')}</span>
+              )}
+            </div>
+          ) : (
+            <ModelViewer
+              url={resultUrl}
+              className="aspect-square w-full lg:aspect-auto lg:h-[520px]"
+              onThumbnail={(dataUrl) => {
+                if (currentIdRef.current) updateGeneration(currentIdRef.current, { thumbnail: dataUrl })
+              }}
+            />
+          )}
+
+          {mode === 'flux' && fluxError && (
+            <div className="rounded-xl bg-red-500/10 p-3 text-sm text-red-700 dark:text-red-400">{fluxError}</div>
+          )}
+
+          {mode === 'flux' && fluxResultUrl && fluxResultBlob && (
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-4 py-3 text-xs dark:border-white/10 dark:bg-neutral-900">
+              <button
+                onClick={handleMakeIt3D}
+                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 py-1.5 font-medium text-white"
+              >
+                <Box className="h-3.5 w-3.5" /> Make it 3D
+              </button>
+              <a
+                href={fluxResultUrl}
+                download="chomu-flux-image.png"
+                className="flex items-center gap-1.5 rounded-lg bg-violet-500/10 px-3 py-1.5 font-medium text-violet-600 dark:text-violet-300"
+              >
+                <Download className="h-3.5 w-3.5" /> {t('generate.export')}
+              </a>
+            </div>
+          )}
+
+          {mode !== 'flux' && resultUrl && resultBlob && (
             <div className="flex items-center justify-between rounded-xl border border-black/10 bg-white px-4 py-3 text-xs dark:border-white/10 dark:bg-neutral-900">
               <span className="text-neutral-500 dark:text-neutral-400">
                 {t('generate.seed')} <span className="font-mono text-neutral-700 dark:text-neutral-300">{resultSeed}</span>

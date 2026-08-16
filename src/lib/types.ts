@@ -1,5 +1,9 @@
 export type GenerationMode = 'text' | 'image'
 
+/** What a history entry actually holds: a 3D model (the original ChoMU
+ *  scope) or a 2D image from the text-to-image generator. */
+export type GenerationKind = 'model' | 'image'
+
 export type GenerationStatus = 'pending' | 'success' | 'error'
 
 export interface GenerationParams {
@@ -12,6 +16,8 @@ export interface GenerationParams {
 
 export interface GenerationRecord {
   id: string
+  /** Defaults to 'model' when absent, for records saved before this field existed. */
+  kind?: GenerationKind
   mode: GenerationMode
   prompt?: string
   sourceImage?: string // data URL thumbnail of the uploaded image
@@ -21,7 +27,8 @@ export interface GenerationRecord {
   seed?: number
   params: GenerationParams
   glbBlob?: Blob
-  thumbnail?: string // data URL rendered from the model, filled in by the viewer
+  imageBlob?: Blob // the generated image, when kind === 'image'
+  thumbnail?: string // data URL rendered from the model/image, shown in History
   error?: string
 }
 

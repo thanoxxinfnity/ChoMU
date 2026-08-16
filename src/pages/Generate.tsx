@@ -277,7 +277,7 @@ export function GeneratePage() {
                 <ParamSlider
                   label="Structure sampling steps"
                   value={params.ssSamplingSteps ?? 12}
-                  min={1}
+                  min={10}
                   max={50}
                   step={1}
                   onChange={(v) => setParams((p) => ({ ...p, ssSamplingSteps: v }))}
@@ -285,15 +285,15 @@ export function GeneratePage() {
                 <ParamSlider
                   label="Structure CFG scale"
                   value={params.ssCfgScale ?? 7.5}
-                  min={1}
-                  max={15}
+                  min={1.1}
+                  max={10}
                   step={0.1}
                   onChange={(v) => setParams((p) => ({ ...p, ssCfgScale: v }))}
                 />
                 <ParamSlider
                   label="Detail sampling steps"
                   value={params.slatSamplingSteps ?? 12}
-                  min={1}
+                  min={10}
                   max={50}
                   step={1}
                   onChange={(v) => setParams((p) => ({ ...p, slatSamplingSteps: v }))}
@@ -301,8 +301,8 @@ export function GeneratePage() {
                 <ParamSlider
                   label="Detail CFG scale"
                   value={params.slatCfgScale ?? 3}
-                  min={1}
-                  max={15}
+                  min={1.1}
+                  max={10}
                   step={0.1}
                   onChange={(v) => setParams((p) => ({ ...p, slatCfgScale: v }))}
                 />

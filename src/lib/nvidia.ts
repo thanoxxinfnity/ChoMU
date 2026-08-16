@@ -132,6 +132,36 @@ async function postTrellisWithRetry(
   return lastRes!
 }
 
+/**
+ * A 200 response doesn't always mean a model came back: NVIDIA's own
+ * safety filter can accept the request and still return an empty
+ * artifact with `finishReason: "CONTENT_FILTERED"` (observed directly —
+ * "a realistic human figure, photorealistic" was filtered while a
+ * stylized-character phrasing of the same subject was not). Silently
+ * handing that empty artifact to the GLB loader would either crash the
+ * viewer or show nothing with no explanation, so it's surfaced as a
+ * real, specific error instead.
+ */
+function extractGlb(body: TrellisResponse): GenerationResult {
+  const artifact = body.artifacts[0]
+  if (artifact.finishReason !== 'SUCCESS' || !artifact.base64) {
+    if (artifact.finishReason === 'CONTENT_FILTERED') {
+      throw new NvidiaApiError(
+        'NVIDIA’s safety filter blocked this prompt/image and returned no model. Try rephrasing — e.g. describe a "stylized 3D character" rather than a photorealistic real person.',
+        { code: 'BAD_REQUEST' },
+      )
+    }
+    throw new NvidiaApiError(`NVIDIA returned no model (finishReason: ${artifact.finishReason}).`, {
+      code: 'UNKNOWN',
+    })
+  }
+  return {
+    glb: base64ToBlob(artifact.base64, 'model/gltf-binary'),
+    seed: artifact.seed,
+    finishReason: artifact.finishReason,
+  }
+}
+
 export async function generateFromText(
   apiKey: string,
   prompt: string,
@@ -140,13 +170,7 @@ export async function generateFromText(
 ): Promise<GenerationResult> {
   const res = await postTrellisWithRetry(authHeaders(apiKey), { prompt, ...paramsToPayload(params) }, onRetry)
   if (res.status !== 200) handleErrorResponse(res.status, res.data)
-  const body = res.data as TrellisResponse
-  const artifact = body.artifacts[0]
-  return {
-    glb: base64ToBlob(artifact.base64, 'model/gltf-binary'),
-    seed: artifact.seed,
-    finishReason: artifact.finishReason,
-  }
+  return extractGlb(res.data as TrellisResponse)
 }
 
 interface AssetCreateResponse {
@@ -197,11 +221,5 @@ export async function generateFromImage(
     onRetry,
   )
   if (res.status !== 200) handleErrorResponse(res.status, res.data)
-  const body = res.data as TrellisResponse
-  const artifact = body.artifacts[0]
-  return {
-    glb: base64ToBlob(artifact.base64, 'model/gltf-binary'),
-    seed: artifact.seed,
-    finishReason: artifact.finishReason,
-  }
+  return extractGlb(res.data as TrellisResponse)
 }

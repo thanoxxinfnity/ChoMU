@@ -32,9 +32,9 @@ export interface ChomuSettings {
 
 export const DEFAULT_PARAMS: Required<GenerationParams> = {
   seed: 0,
-  ssSamplingSteps: 12,
+  ssSamplingSteps: 15,
   ssCfgScale: 7.5,
-  slatSamplingSteps: 12,
+  slatSamplingSteps: 15,
   slatCfgScale: 3,
 }
 
@@ -48,11 +48,17 @@ export const DEFAULT_PARAMS: Required<GenerationParams> = {
  * longer and comes out more refined. These presets are honest about that
  * trade-off rather than pretending to control texture pixel resolution,
  * which export-time resizing (see lib/exporters.ts) handles instead.
+ *
+ * ss_sampling_steps and slat_sampling_steps are server-validated to
+ * [10, 50] inclusive (confirmed against the live endpoint: values below 10
+ * are rejected with a `greater_than_equal` 422, above 50 with
+ * `less_than_equal`) — "Fast" uses the floor of that range, it can't go
+ * lower without NVIDIA rejecting the request outright.
  */
 export const SPEED_PRESETS = {
-  fast: { label: 'Fast', description: '~6 steps — quickest, less refined', ssSamplingSteps: 6, slatSamplingSteps: 6 },
-  balanced: { label: 'Balanced', description: '~12 steps — default', ssSamplingSteps: 12, slatSamplingSteps: 12 },
-  quality: { label: 'Quality', description: '~25 steps — slowest, most refined', ssSamplingSteps: 25, slatSamplingSteps: 25 },
+  fast: { label: 'Fast', description: '10 steps — quickest, less refined', ssSamplingSteps: 10, slatSamplingSteps: 10 },
+  balanced: { label: 'Balanced', description: '15 steps — default', ssSamplingSteps: 15, slatSamplingSteps: 15 },
+  quality: { label: 'Quality', description: '35 steps — slowest, most refined', ssSamplingSteps: 35, slatSamplingSteps: 35 },
 } as const
 
 export type SpeedPresetId = keyof typeof SPEED_PRESETS

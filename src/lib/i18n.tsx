@@ -38,6 +38,8 @@ const STRINGS = {
     'generate.sample.hint':
       "Uses NVIDIA's own bundled preset image, not your prompt — a quick way to see the viewer/exporter work. Not immune to NVIDIA's outages either.",
     'generate.waiting': 'Waiting for a model…',
+    'generate.reliabilityNote':
+      "NVIDIA's servers can occasionally be busy or slow, which can show up as an error — ChoMU automatically retries a few times before giving up. Every model that finishes successfully is real, and downloadable in all supported formats (GLB, glTF, OBJ, STL, PLY, USDZ).",
 
     'history.title': 'Generation history',
     'history.subtitle': "Every generation you've run, stored locally on this device.",
@@ -101,6 +103,8 @@ const STRINGS = {
     'generate.sample.button': 'सैंपल ट्राई करें',
     'generate.sample.hint':
       'ये NVIDIA की अपनी बंडल्ड preset image इस्तेमाल करता है, आपका प्रॉम्प्ट नहीं — viewer/exporter जल्दी देखने का तरीका। NVIDIA के outage से ये भी अछूता नहीं है।',
+    'generate.reliabilityNote':
+      'कभी-कभी NVIDIA का सर्वर busy या धीमा हो सकता है, जिससे error आ सकता है — ChoMU automatically कुछ बार retry करता है हार मानने से पहले। जो भी model successfully बनता है वो 100% real होता है, और सभी supported formats (GLB, glTF, OBJ, STL, PLY, USDZ) में download हो सकता है।',
 
     'history.title': 'जनरेशन हिस्ट्री',
     'history.subtitle': 'आपके सभी जनरेशन, इस डिवाइस पर लोकल रूप से सेव।',

@@ -444,6 +444,10 @@ export function GeneratePage() {
           )}
         </div>
       </div>
+
+      <p className="mx-auto mt-8 max-w-2xl text-center text-xs leading-relaxed text-neutral-400 dark:text-neutral-500">
+        {t('generate.reliabilityNote')}
+      </p>
     </div>
   )
 }

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Eye, EyeOff, KeyRound, CheckCircle2, XCircle, Loader2, Monitor, Sun, Moon, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, CheckCircle2, XCircle, Loader2, Monitor, Sun, Moon, Trash2, Languages } from 'lucide-react'
 import { getApiKey, setApiKey as persistApiKey, clearApiKey } from '../lib/storage'
 import { testApiKey } from '../lib/nvidia'
 import { useTheme } from '../lib/theme'
+import { useI18n } from '../lib/i18n'
 import clsx from 'clsx'
 
 export function SettingsPage() {
@@ -12,6 +13,7 @@ export function SettingsPage() {
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const { theme, setTheme } = useTheme()
+  const { language, setLanguage, t } = useI18n()
 
   useEffect(() => {
     getApiKey().then(setApiKeyState)
@@ -43,23 +45,44 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8 pb-24 md:pb-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-          Manage your NVIDIA API key and app preferences.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('settings.title')}</h1>
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t('settings.subtitle')}</p>
       </div>
+
+      <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+        <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold">
+          <Languages className="h-4.5 w-4.5 text-violet-500" />
+          {t('settings.language')}
+        </h2>
+        <div className="flex gap-2">
+          {(
+            [
+              { id: 'en', label: 'English' },
+              { id: 'hi', label: 'हिंदी (Hindi)' },
+            ] as const
+          ).map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setLanguage(id)}
+              className={clsx(
+                'flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition',
+                language === id
+                  ? 'border-violet-500 bg-violet-500/10 text-violet-600 dark:text-violet-300'
+                  : 'border-black/10 text-neutral-500 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">
         <div className="mb-4 flex items-center gap-2">
           <KeyRound className="h-4.5 w-4.5 text-violet-500" />
-          <h2 className="text-sm font-semibold">NVIDIA NIM API Key</h2>
+          <h2 className="text-sm font-semibold">{t('settings.apiKey.title')}</h2>
         </div>
-        <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">
-          ChoMU calls NVIDIA's hosted <code className="rounded bg-black/5 px-1 py-0.5 dark:bg-white/10">microsoft/trellis</code>{' '}
-          NIM endpoint directly with this key. It is stored only on this device and is never bundled into the app or
-          sent anywhere except NVIDIA's API. Get a free key at{' '}
-          <span className="text-violet-500">build.nvidia.com</span>.
-        </p>
+        <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">{t('settings.apiKey.description')}</p>
 
         <div className="relative">
           <input
@@ -82,7 +105,7 @@ export function SettingsPage() {
             onClick={handleSave}
             className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-violet-500/25 transition hover:opacity-90"
           >
-            {saved ? 'Saved ✓' : 'Save key'}
+            {saved ? t('settings.apiKey.saved') : t('settings.apiKey.save')}
           </button>
           <button
             onClick={handleTest}
@@ -90,14 +113,14 @@ export function SettingsPage() {
             className="flex items-center gap-2 rounded-xl border border-black/10 px-4 py-2 text-sm font-medium transition hover:bg-black/5 disabled:opacity-40 dark:border-white/10 dark:hover:bg-white/5"
           >
             {testing && <Loader2 className="h-4 w-4 animate-spin" />}
-            Test API key
+            {t('settings.apiKey.test')}
           </button>
           <button
             onClick={handleClear}
             className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-red-500 transition hover:bg-red-500/10"
           >
             <Trash2 className="h-4 w-4" />
-            Clear
+            {t('settings.apiKey.clear')}
           </button>
         </div>
 
@@ -121,15 +144,15 @@ export function SettingsPage() {
       </section>
 
       <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-        <h2 className="mb-4 text-sm font-semibold">Appearance</h2>
+        <h2 className="mb-4 text-sm font-semibold">{t('settings.appearance')}</h2>
         <div className="flex gap-2">
           {(
             [
-              { id: 'light', label: 'Light', icon: Sun },
-              { id: 'dark', label: 'Dark', icon: Moon },
-              { id: 'system', label: 'System', icon: Monitor },
+              { id: 'light', labelKey: 'settings.theme.light', icon: Sun },
+              { id: 'dark', labelKey: 'settings.theme.dark', icon: Moon },
+              { id: 'system', labelKey: 'settings.theme.system', icon: Monitor },
             ] as const
-          ).map(({ id, label, icon: Icon }) => (
+          ).map(({ id, labelKey, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTheme(id)}
@@ -141,18 +164,14 @@ export function SettingsPage() {
               )}
             >
               <Icon className="h-4.5 w-4.5" />
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
       </section>
 
       <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-        <strong>Known NVIDIA-side limitation:</strong> as of now, NVIDIA's hosted TRELLIS endpoint only accepts its
-        own preset gallery images for Image-to-3D — custom image uploads are rejected server-side
-        (<code>Expected: example_id, got: asset_id</code>). Text-to-3D is fully working. ChoMU will surface this
-        exact error if it happens, and will start working automatically the moment NVIDIA lifts the restriction — no
-        app update needed.
+        <strong>{t('settings.knownLimitation.title')}</strong> {t('settings.knownLimitation.body')}
       </section>
     </div>
   )

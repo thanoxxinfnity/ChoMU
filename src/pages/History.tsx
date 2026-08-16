@@ -6,8 +6,10 @@ import { ModelViewer } from '../components/ModelViewer'
 import { ExportMenu } from '../components/ExportMenu'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
+import { useI18n } from '../lib/i18n'
 
 export function HistoryPage() {
+  const { t } = useI18n()
   const [records, setRecords] = useState<GenerationRecord[]>([])
   const [selected, setSelected] = useState<GenerationRecord | null>(null)
   const [loading, setLoading] = useState(true)
@@ -49,10 +51,8 @@ export function HistoryPage() {
   return (
     <div className="mx-auto max-w-6xl pb-24 md:pb-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Generation history</h1>
-        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-          Every generation you've run, stored locally on this device.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('history.title')}</h1>
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t('history.subtitle')}</p>
       </div>
 
       {loading ? (
@@ -60,12 +60,12 @@ export function HistoryPage() {
       ) : records.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-black/10 py-20 text-center dark:border-white/10">
           <Boxes className="h-10 w-10 text-neutral-300 dark:text-neutral-600" />
-          <p className="text-sm text-neutral-500">No generations yet.</p>
+          <p className="text-sm text-neutral-500">{t('history.empty')}</p>
           <Link
             to="/"
             className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-medium text-white"
           >
-            Generate your first model
+            {t('history.generateFirst')}
           </Link>
         </div>
       ) : (
@@ -84,12 +84,12 @@ export function HistoryPage() {
               ) : r.status === 'error' ? (
                 <div className="flex h-full flex-col items-center justify-center gap-1.5 bg-red-500/5 text-red-400">
                   <AlertCircle className="h-6 w-6" />
-                  <span className="text-[11px]">Failed</span>
+                  <span className="text-[11px]">{t('history.failed')}</span>
                 </div>
               ) : r.status === 'pending' ? (
                 <div className="flex h-full flex-col items-center justify-center gap-1.5 text-neutral-400">
                   <Clock className="h-6 w-6 animate-pulse" />
-                  <span className="text-[11px]">Pending</span>
+                  <span className="text-[11px]">{t('history.pending')}</span>
                 </div>
               ) : (
                 <div className="flex h-full items-center justify-center bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10">
@@ -152,7 +152,7 @@ export function HistoryPage() {
                         baseName={selected.prompt || 'model'}
                         trigger={
                           <span className="flex items-center gap-1.5 rounded-lg bg-violet-500/10 px-3 py-1.5 font-medium text-violet-600 dark:text-violet-300">
-                            <Download className="h-3.5 w-3.5" /> Export
+                            <Download className="h-3.5 w-3.5" /> {t('generate.export')}
                           </span>
                         }
                       />
@@ -162,7 +162,7 @@ export function HistoryPage() {
                           'flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-red-500 hover:bg-red-500/10',
                         )}
                       >
-                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                        <Trash2 className="h-3.5 w-3.5" /> {t('history.delete')}
                       </button>
                     </div>
                   </div>

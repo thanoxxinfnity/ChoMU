@@ -3,6 +3,7 @@ import type { ChomuSettings } from './types'
 
 const API_KEY_STORAGE_KEY = 'chomu.apiKey'
 const THEME_STORAGE_KEY = 'chomu.theme'
+const LANGUAGE_STORAGE_KEY = 'chomu.language'
 
 /**
  * The NVIDIA API key never lives in source code — it is entered by the user
@@ -32,4 +33,15 @@ export async function getTheme(): Promise<ChomuSettings['theme']> {
 
 export async function setTheme(theme: ChomuSettings['theme']): Promise<void> {
   await Preferences.set({ key: THEME_STORAGE_KEY, value: theme })
+}
+
+export type Language = 'en' | 'hi'
+
+export async function getLanguage(): Promise<Language> {
+  const { value } = await Preferences.get({ key: LANGUAGE_STORAGE_KEY })
+  return value === 'hi' ? 'hi' : 'en'
+}
+
+export async function setLanguage(language: Language): Promise<void> {
+  await Preferences.set({ key: LANGUAGE_STORAGE_KEY, value: language })
 }

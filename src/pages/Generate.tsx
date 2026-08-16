@@ -10,10 +10,12 @@ import { saveGeneration, newGenerationId, updateGeneration } from '../lib/histor
 import { useQueueStore } from '../lib/queueStore'
 import { DEFAULT_PARAMS, SPEED_PRESETS, type GenerationParams, type GenerationRecord, type SpeedPresetId } from '../lib/types'
 import { Link } from 'react-router-dom'
+import { useI18n } from '../lib/i18n'
 
 type Mode = 'text' | 'image'
 
 export function GeneratePage() {
+  const { t } = useI18n()
   const [mode, setMode] = useState<Mode>('text')
   const [prompt, setPrompt] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -75,7 +77,7 @@ export function GeneratePage() {
     setStatus('checking-key')
     const apiKey = await getApiKey()
     if (!apiKey.trim()) {
-      setError({ message: 'No NVIDIA API key set yet. Add one in Settings before generating.', isKeyError: true })
+      setError({ message: t('generate.noApiKey'), isKeyError: true })
       setStatus('error')
       return
     }
@@ -129,10 +131,8 @@ export function GeneratePage() {
   return (
     <div className="mx-auto max-w-6xl pb-24 md:pb-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Generate a 3D model</h1>
-        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-          Real-time generation via NVIDIA NIM — Microsoft TRELLIS.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('generate.title')}</h1>
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t('generate.subtitle')}</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -147,7 +147,7 @@ export function GeneratePage() {
                   : 'text-neutral-500',
               )}
             >
-              <Type className="h-4 w-4" /> Text to 3D
+              <Type className="h-4 w-4" /> {t('generate.tab.text')}
             </button>
             <button
               onClick={() => setMode('image')}
@@ -158,7 +158,7 @@ export function GeneratePage() {
                   : 'text-neutral-500',
               )}
             >
-              <ImageUp className="h-4 w-4" /> Image to 3D
+              <ImageUp className="h-4 w-4" /> {t('generate.tab.image')}
             </button>
           </div>
 
@@ -167,20 +167,16 @@ export function GeneratePage() {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder={
-                  batchMode
-                    ? 'One prompt per line — each line becomes a separate queued generation…'
-                    : 'A weathered leather backpack with brass buckles, photorealistic…'
-                }
+                placeholder={batchMode ? t('generate.batchPlaceholder') : t('generate.prompt.placeholder')}
                 rows={batchMode ? 6 : 4}
                 className="w-full resize-none rounded-2xl border border-black/10 bg-white p-4 text-sm outline-none ring-violet-500/40 focus:ring-2 dark:border-white/10 dark:bg-neutral-900"
               />
               <label className="flex items-center gap-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
                 <input type="checkbox" checked={batchMode} onChange={(e) => setBatchMode(e.target.checked)} className="accent-violet-600" />
-                Batch mode — queue multiple prompts at once
+                {t('generate.batchMode')}
                 {batchMode && batchLines.length > 0 && (
                   <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-violet-600 dark:text-violet-300">
-                    {batchLines.length} queued
+                    {batchLines.length} {t('generate.queued')}
                   </span>
                 )}
               </label>
@@ -214,14 +210,13 @@ export function GeneratePage() {
                   className="flex h-56 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-black/15 text-neutral-400 transition hover:border-violet-400 hover:text-violet-500 dark:border-white/15"
                 >
                   <ImageUp className="h-7 w-7" />
-                  <span className="text-sm font-medium">Click to upload an image</span>
-                  <span className="text-xs">PNG, JPG, or WebP</span>
+                  <span className="text-sm font-medium">{t('generate.image.pick')}</span>
+                  <span className="text-xs">{t('generate.image.formats')}</span>
                 </button>
               )}
               <div className="mt-2 flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-                NVIDIA's hosted endpoint currently rejects custom image uploads server-side. See Settings for
-                details.
+                {t('generate.image.limitation')}
               </div>
             </div>
           )}
@@ -261,7 +256,7 @@ export function GeneratePage() {
               onClick={() => setShowAdvanced((v) => !v)}
               className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
             >
-              Advanced parameters
+              {t('generate.advanced')}
               <ChevronDown className={clsx('h-4 w-4 transition-transform', showAdvanced && 'rotate-180')} />
             </button>
             {showAdvanced && (
@@ -320,12 +315,12 @@ export function GeneratePage() {
                 {status === 'generating' || status === 'checking-key' ? (
                   <>
                     <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                    {warmingUp ? 'Waking up NVIDIA GPU worker (~90s)…' : 'Generating…'}
+                    {warmingUp ? t('generate.warmingUp') : t('generate.generating')}
                   </>
                 ) : (
                   <>
                     <Wand2 className="h-4.5 w-4.5" />
-                    Generate now
+                    {t('generate.now')}
                   </>
                 )}
               </button>
@@ -341,7 +336,9 @@ export function GeneratePage() {
               )}
             >
               <ListPlus className="h-4.5 w-4.5" />
-              {batchMode ? `Queue ${batchLines.length || ''} prompt${batchLines.length === 1 ? '' : 's'}` : 'Add to queue'}
+              {batchMode
+                ? `${t('generate.queueN')} ${batchLines.length || ''} ${t('generate.prompts')}${batchLines.length === 1 ? '' : 's'}`
+                : t('generate.addToQueue')}
             </button>
           </div>
 
@@ -352,7 +349,7 @@ export function GeneratePage() {
                 <>
                   {' '}
                   <Link to="/settings" className="font-semibold underline">
-                    Open Settings
+                    {t('generate.openSettings')}
                   </Link>
                 </>
               )}
@@ -373,14 +370,14 @@ export function GeneratePage() {
           {resultUrl && resultBlob && (
             <div className="flex items-center justify-between rounded-xl border border-black/10 bg-white px-4 py-3 text-xs dark:border-white/10 dark:bg-neutral-900">
               <span className="text-neutral-500 dark:text-neutral-400">
-                Seed <span className="font-mono text-neutral-700 dark:text-neutral-300">{resultSeed}</span>
+                {t('generate.seed')} <span className="font-mono text-neutral-700 dark:text-neutral-300">{resultSeed}</span>
               </span>
               <ExportMenu
                 glbBlob={resultBlob}
                 baseName={mode === 'text' ? prompt.slice(0, 24) || 'model' : 'model'}
                 trigger={
                   <span className="flex items-center gap-1.5 rounded-lg bg-violet-500/10 px-3 py-1.5 font-medium text-violet-600 dark:text-violet-300">
-                    <Download className="h-3.5 w-3.5" /> Export
+                    <Download className="h-3.5 w-3.5" /> {t('generate.export')}
                   </span>
                 }
               />

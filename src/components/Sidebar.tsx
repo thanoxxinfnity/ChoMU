@@ -1,28 +1,31 @@
 import { NavLink } from 'react-router-dom'
-import { Sparkles, History, Settings, Boxes } from 'lucide-react'
+import { Sparkles, History, Settings } from 'lucide-react'
 import clsx from 'clsx'
+import { useI18n } from '../lib/i18n'
+import type { TranslationKey } from '../lib/i18n'
 
-const NAV = [
-  { to: '/', label: 'Generate', icon: Sparkles, end: true },
-  { to: '/history', label: 'History', icon: History, end: false },
-  { to: '/settings', label: 'Settings', icon: Settings, end: false },
+const NAV: { to: string; labelKey: TranslationKey; icon: typeof Sparkles; end: boolean }[] = [
+  { to: '/', labelKey: 'nav.generate', icon: Sparkles, end: true },
+  { to: '/history', labelKey: 'nav.history', icon: History, end: false },
+  { to: '/settings', labelKey: 'nav.settings', icon: Settings, end: false },
 ]
 
 export function Sidebar() {
+  const { t } = useI18n()
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-black/5 bg-white/60 px-4 py-6 backdrop-blur-xl dark:border-white/10 dark:bg-neutral-900/40 md:flex">
       <div className="mb-8 flex items-center gap-2 px-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30">
-          <Boxes className="h-5 w-5 text-white" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-lg shadow-violet-500/30">
+          <img src="/favicon-192.png" alt="" className="h-full w-full object-cover" />
         </div>
         <div>
           <div className="text-lg font-semibold tracking-tight">ChoMU</div>
-          <div className="text-[11px] leading-none text-neutral-500 dark:text-neutral-400">AI 3D Generator</div>
+          <div className="text-[11px] leading-none text-neutral-500 dark:text-neutral-400">{t('sidebar.tagline')}</div>
         </div>
       </div>
 
       <nav className="flex flex-col gap-1">
-        {NAV.map(({ to, label, icon: Icon, end }) => (
+        {NAV.map(({ to, labelKey, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -37,15 +40,15 @@ export function Sidebar() {
             }
           >
             <Icon className="h-4.5 w-4.5" strokeWidth={2} />
-            {label}
+            {t(labelKey)}
           </NavLink>
         ))}
       </nav>
 
       <div className="mt-auto rounded-xl border border-black/5 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 p-3 text-xs text-neutral-600 dark:border-white/10 dark:text-neutral-400">
-        Powered by NVIDIA NIM
+        {t('sidebar.poweredBy')}
         <br />
-        Microsoft TRELLIS
+        {t('sidebar.trellis')}
       </div>
     </aside>
   )

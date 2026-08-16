@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Type, ImageUp, Wand2, Loader2, ChevronDown, X, Download, AlertTriangle, ListPlus } from 'lucide-react'
+import { Type, ImageUp, Wand2, Loader2, ChevronDown, X, Download, AlertTriangle, ListPlus, Sparkle } from 'lucide-react'
 import clsx from 'clsx'
 import { ModelViewer } from '../components/ModelViewer'
 import { ExportMenu } from '../components/ExportMenu'
 import { QueuePanel } from '../components/QueuePanel'
-import { generateFromText, generateFromImage, NvidiaApiError } from '../lib/nvidia'
+import { generateFromText, generateFromImage, generateSample, NvidiaApiError } from '../lib/nvidia'
 import { getApiKey } from '../lib/storage'
 import { saveGeneration, newGenerationId, updateGeneration } from '../lib/history'
 import { useQueueStore } from '../lib/queueStore'
@@ -118,6 +118,51 @@ export function GeneratePage() {
         seed: result.seed,
         glbBlob: result.glb,
       })
+    } catch (e) {
+      const err = e as NvidiaApiError
+      setError({ message: err.message, isKeyError: err.code === 'INVALID_KEY' })
+      setStatus('error')
+      await saveGeneration({ ...record, status: 'error', finishedAt: Date.now(), error: err.message })
+    } finally {
+      setWarmingUp(false)
+    }
+  }
+
+  const handleTrySample = async () => {
+    setError(null)
+    setStatus('checking-key')
+    const apiKey = await getApiKey()
+    if (!apiKey.trim()) {
+      setError({ message: t('generate.noApiKey'), isKeyError: true })
+      setStatus('error')
+      return
+    }
+
+    const id = newGenerationId()
+    currentIdRef.current = id
+    const record: GenerationRecord = {
+      id,
+      mode: 'image',
+      prompt: t('generate.sample.label'),
+      status: 'pending',
+      createdAt: Date.now(),
+      params,
+    }
+    await saveGeneration(record)
+
+    setStatus('generating')
+    setResultUrl(null)
+    setResultBlob(null)
+    setWarmingUp(false)
+    const onRetry = () => setWarmingUp(true)
+    try {
+      const result = await generateSample(apiKey, onRetry)
+      const url = URL.createObjectURL(result.glb)
+      setResultUrl(url)
+      setResultBlob(result.glb)
+      setResultSeed(result.seed)
+      setStatus('done')
+      await saveGeneration({ ...record, status: 'success', finishedAt: Date.now(), seed: result.seed, glbBlob: result.glb })
     } catch (e) {
       const err = e as NvidiaApiError
       setError({ message: err.message, isKeyError: err.code === 'INVALID_KEY' })
@@ -340,6 +385,20 @@ export function GeneratePage() {
                 ? `${t('generate.queueN')} ${batchLines.length || ''} ${t('generate.prompts')}${batchLines.length === 1 ? '' : 's'}`
                 : t('generate.addToQueue')}
             </button>
+          </div>
+
+          <div>
+            <button
+              onClick={handleTrySample}
+              disabled={status === 'generating' || status === 'checking-key'}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-300 py-3 text-sm font-medium text-violet-600 transition hover:bg-violet-500/5 disabled:cursor-not-allowed disabled:opacity-40 dark:border-violet-800 dark:text-violet-300"
+            >
+              <Sparkle className="h-4 w-4" />
+              {t('generate.sample.button')}
+            </button>
+            <p className="mt-1.5 text-center text-[11px] text-neutral-400 dark:text-neutral-500">
+              {t('generate.sample.hint')}
+            </p>
           </div>
 
           {error && (

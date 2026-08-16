@@ -33,6 +33,10 @@ const STRINGS = {
     'generate.export': 'Export',
     'generate.noApiKey': 'No NVIDIA API key set yet. Add one in Settings before generating.',
     'generate.openSettings': 'Open Settings',
+    'generate.sample.label': 'Sample preset (NVIDIA example_id 0)',
+    'generate.sample.button': 'Try a sample',
+    'generate.sample.hint':
+      "Uses NVIDIA's own bundled preset image, not your prompt — a quick way to see the viewer/exporter work. Not immune to NVIDIA's outages either.",
     'generate.waiting': 'Waiting for a model…',
 
     'history.title': 'Generation history',
@@ -93,6 +97,10 @@ const STRINGS = {
     'generate.noApiKey': 'अभी तक कोई NVIDIA API key सेट नहीं है। जनरेट करने से पहले सेटिंग्स में एक जोड़ें।',
     'generate.openSettings': 'सेटिंग्स खोलें',
     'generate.waiting': 'मॉडल का इंतज़ार हो रहा है…',
+    'generate.sample.label': 'सैंपल प्रीसेट (NVIDIA example_id 0)',
+    'generate.sample.button': 'सैंपल ट्राई करें',
+    'generate.sample.hint':
+      'ये NVIDIA की अपनी बंडल्ड preset image इस्तेमाल करता है, आपका प्रॉम्प्ट नहीं — viewer/exporter जल्दी देखने का तरीका। NVIDIA के outage से ये भी अछूता नहीं है।',
 
     'history.title': 'जनरेशन हिस्ट्री',
     'history.subtitle': 'आपके सभी जनरेशन, इस डिवाइस पर लोकल रूप से सेव।',

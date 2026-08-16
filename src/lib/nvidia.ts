@@ -173,6 +173,22 @@ export async function generateFromText(
   return extractGlb(res.data as TrellisResponse)
 }
 
+/**
+ * Requests NVIDIA's own bundled preset gallery image (index 0) instead of a
+ * user prompt or upload — `image: "data:image/png;example_id,0"`. This is
+ * NOT a real generation from anything the user typed; it exists purely so
+ * there's something guaranteed-simple to demo when NVIDIA is unhealthy for
+ * custom prompts. Even this path isn't immune to NVIDIA's own outages
+ * (verified directly: it 500s right along with everything else when
+ * NVIDIA's TRELLIS backend is fully down), so it's a best-effort sample,
+ * not a guarantee.
+ */
+export async function generateSample(apiKey: string, onRetry?: () => void): Promise<GenerationResult> {
+  const res = await postTrellisWithRetry(authHeaders(apiKey), { image: 'data:image/png;example_id,0' }, onRetry)
+  if (res.status !== 200) handleErrorResponse(res.status, res.data)
+  return extractGlb(res.data as TrellisResponse)
+}
+
 interface AssetCreateResponse {
   assetId: string
   uploadUrl: string

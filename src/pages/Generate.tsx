@@ -8,7 +8,7 @@ import { generateFromText, generateFromImage, NvidiaApiError } from '../lib/nvid
 import { getApiKey } from '../lib/storage'
 import { saveGeneration, newGenerationId, updateGeneration } from '../lib/history'
 import { useQueueStore } from '../lib/queueStore'
-import { DEFAULT_PARAMS, type GenerationParams, type GenerationRecord } from '../lib/types'
+import { DEFAULT_PARAMS, SPEED_PRESETS, type GenerationParams, type GenerationRecord, type SpeedPresetId } from '../lib/types'
 import { Link } from 'react-router-dom'
 
 type Mode = 'text' | 'image'
@@ -19,6 +19,7 @@ export function GeneratePage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [params, setParams] = useState<GenerationParams>(DEFAULT_PARAMS)
+  const [speedPreset, setSpeedPreset] = useState<SpeedPresetId>('balanced')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [status, setStatus] = useState<'idle' | 'checking-key' | 'generating' | 'done' | 'error'>('idle')
   const [error, setError] = useState<{ message: string; isKeyError: boolean } | null>(null)
@@ -224,6 +225,36 @@ export function GeneratePage() {
               </div>
             </div>
           )}
+
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400">Speed</div>
+            <div className="grid grid-cols-3 gap-2">
+              {(Object.entries(SPEED_PRESETS) as [SpeedPresetId, (typeof SPEED_PRESETS)[SpeedPresetId]][]).map(
+                ([id, preset]) => (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      setSpeedPreset(id)
+                      setParams((p) => ({
+                        ...p,
+                        ssSamplingSteps: preset.ssSamplingSteps,
+                        slatSamplingSteps: preset.slatSamplingSteps,
+                      }))
+                    }}
+                    className={clsx(
+                      'rounded-xl border px-2 py-2.5 text-center transition',
+                      speedPreset === id
+                        ? 'border-violet-500 bg-violet-500/10 text-violet-600 dark:text-violet-300'
+                        : 'border-black/10 text-neutral-500 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5',
+                    )}
+                  >
+                    <div className="text-sm font-semibold">{preset.label}</div>
+                    <div className="mt-0.5 text-[10px] leading-tight opacity-80">{preset.description}</div>
+                  </button>
+                ),
+              )}
+            </div>
+          </div>
 
           <div className="rounded-2xl border border-black/10 dark:border-white/10">
             <button

@@ -28,7 +28,7 @@ export function GeneratePage() {
   const [resultUrl, setResultUrl] = useState<string | null>(null)
   const [resultBlob, setResultBlob] = useState<Blob | null>(null)
   const [resultSeed, setResultSeed] = useState<number | null>(null)
-  const [warmingUp, setWarmingUp] = useState(false)
+  const [retryInfo, setRetryInfo] = useState<{ attempt: number; maxAttempts: number } | null>(null)
   const [imageProgress, setImageProgress] = useState<string | null>(null)
   const [bgProtectionWarning, setBgProtectionWarning] = useState<string | null>(null)
   const [fluxPrompt, setFluxPrompt] = useState('')
@@ -91,10 +91,10 @@ export function GeneratePage() {
     setResultUrl(null)
     setResultBlob(null)
     setResultSeed(null)
-    setWarmingUp(false)
+    setRetryInfo(null)
     setImageProgress(null)
     setBgProtectionWarning(null)
-    const onRetry = () => setWarmingUp(true)
+    const onRetry = (attempt: number, maxAttempts: number) => setRetryInfo({ attempt, maxAttempts })
     try {
       const result = await runInBackgroundGuard(
         mode === 'text' ? prompt.trim() : 'from your image',
@@ -130,7 +130,7 @@ export function GeneratePage() {
       await saveGeneration({ ...record, status: 'error', finishedAt: Date.now(), error: err.message })
       notifyGenerationDone('ChoMU', 'Generation failed — tap to see what happened.')
     } finally {
-      setWarmingUp(false)
+      setRetryInfo(null)
       setImageProgress(null)
     }
   }
@@ -323,7 +323,10 @@ export function GeneratePage() {
               {status === 'generating' || status === 'checking-key' ? (
                 <>
                   <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                  {imageProgress || (warmingUp ? t('generate.warmingUp') : t('generate.generating'))}
+                  {imageProgress ||
+                    (retryInfo
+                      ? `Server busy — retry ${retryInfo.attempt} of ${retryInfo.maxAttempts}`
+                      : t('generate.generating'))}
                 </>
               ) : (
                 <>

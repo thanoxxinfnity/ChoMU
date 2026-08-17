@@ -7,6 +7,25 @@ export interface RawResponse {
 }
 
 /**
+ * Thrown when the request never got an HTTP response at all — the
+ * connection itself failed (TLS/SSL error, DNS failure, connection reset).
+ * Distinguished from a normal NvidiaApiError so callers can retry it the
+ * same way they retry a 500: this class of failure is common on mobile
+ * networks when a long-lived request (NVIDIA's requests can take up to
+ * ~90s) outlives a WiFi/mobile-data handoff, which can corrupt the TLS
+ * session mid-stream (observed directly: BoringSSL "BAD_DECRYPT" /
+ * "DECRYPTION_FAILED_OR_BAD_RECORD_MAC" on a fresh retry succeeding right
+ * after). Not a ChoMU bug — the fix is a clean retry over a fresh
+ * connection, which this class exists to make possible.
+ */
+export class NetworkConnectionError extends Error {
+  constructor(cause: string) {
+    super(`Connection to NVIDIA failed before a response was received: ${cause}`)
+    this.name = 'NetworkConnectionError'
+  }
+}
+
+/**
  * NVIDIA's API does not send Access-Control-Allow-Origin, so a browser/WebView
  * fetch() is blocked by CORS. On a native Android build we route the request
  * through Capacitor's native HTTP bridge, which is not subject to CORS at all
@@ -25,16 +44,22 @@ export async function apiRequest(opts: {
   const { url, method, headers = {}, data, responseType = 'json', timeoutMs = 300_000 } = opts
 
   if (Capacitor.isNativePlatform()) {
-    const res = await CapacitorHttp.request({
-      url,
-      method,
-      headers,
-      data,
-      connectTimeout: timeoutMs,
-      readTimeout: timeoutMs,
-      responseType: responseType === 'arraybuffer' ? 'arraybuffer' : 'json',
-    })
-    return { status: res.status, headers: res.headers ?? {}, data: res.data }
+    try {
+      const res = await CapacitorHttp.request({
+        url,
+        method,
+        headers,
+        data,
+        connectTimeout: timeoutMs,
+        readTimeout: timeoutMs,
+        responseType: responseType === 'arraybuffer' ? 'arraybuffer' : 'json',
+      })
+      return { status: res.status, headers: res.headers ?? {}, data: res.data }
+    } catch (e) {
+      // CapacitorHttp rejects (rather than resolving with a status code) when
+      // the connection itself fails — no HTTP response was ever received.
+      throw new NetworkConnectionError((e as Error).message ?? String(e))
+    }
   }
 
   // Browser / dev server path

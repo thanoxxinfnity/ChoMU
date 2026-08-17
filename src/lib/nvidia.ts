@@ -1,4 +1,4 @@
-import { apiRequest, base64ToBlob } from './http'
+import { apiRequest, base64ToBlob, NetworkConnectionError } from './http'
 import type { GenerationParams } from './types'
 
 const TRELLIS_URL = 'https://ai.api.nvidia.com/v1/genai/microsoft/trellis'
@@ -115,6 +115,14 @@ export interface GenerationResult {
  * directly against ai.api.nvidia.com, with no proxy involved. The worker is
  * warm immediately afterwards, so one retry reliably succeeds. This is a
  * real characteristic of the free-tier hosted endpoint, not a ChoMU bug.
+ *
+ * A request can also fail before any HTTP response comes back at all — a
+ * TLS/connection-level error (NetworkConnectionError from http.ts), which
+ * shows up on real devices as a raw BoringSSL exception if it isn't caught
+ * here. These requests run for up to several minutes, long enough for a
+ * mobile network to hand off between WiFi and cellular mid-connection and
+ * corrupt the TLS session, so this is retried the same way a 500 is —
+ * a fresh connection on the next attempt reliably succeeds.
  */
 async function postTrellisWithRetry(
   headers: Record<string, string>,
@@ -124,7 +132,16 @@ async function postTrellisWithRetry(
   const maxAttempts = 3
   let lastRes: { status: number; data: unknown } | null = null
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const res = await apiRequest({ url: TRELLIS_URL, method: 'POST', headers, data, timeoutMs: 300_000 })
+    let res: { status: number; data: unknown }
+    try {
+      res = await apiRequest({ url: TRELLIS_URL, method: 'POST', headers, data, timeoutMs: 300_000 })
+    } catch (e) {
+      if (e instanceof NetworkConnectionError && attempt < maxAttempts) {
+        onRetry?.()
+        continue
+      }
+      throw e
+    }
     if (res.status !== 500 || attempt === maxAttempts) return res
     lastRes = res
     onRetry?.()

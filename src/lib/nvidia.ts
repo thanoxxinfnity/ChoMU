@@ -115,10 +115,15 @@ export interface GenerationResult {
  * a 500 (observed directly across many consecutive checks). A fixed number
  * of retries genuinely raises the odds of a real success within one Generate
  * action instead of making the user keep tapping the button themselves: at
- * ~50% per-attempt success, 3 attempts only reaches ~87.5% odds of at least
- * one success, 6 attempts reaches ~98.4%. This is a real, quantifiable
- * trade-off (worst case ~6 x 90s before giving up), not a fake "keep trying
- * forever" claim — it still gives up and reports failure after maxAttempts.
+ * ~50% per-attempt success, 6 attempts reaches ~98.4% odds of at least one
+ * success, 10 reaches ~99.9%. Pushed to 10 so ChoMU keeps trying through
+ * the current bad patch instead of giving up early — generation already
+ * runs behind the background-service guard with a completion notification,
+ * so the user doesn't have to babysit a longer worst case (~10 x 90s ≈ 15
+ * minutes if every attempt failed, which hasn't been observed — actual
+ * runs succeed well before the cap). This is still a real, honest, bounded
+ * retry — not a fake "keep trying forever" claim — it gives up and reports
+ * failure after maxAttempts if NVIDIA is truly fully down.
  *
  * A request can also fail before any HTTP response comes back at all — a
  * TLS/connection-level error (NetworkConnectionError from http.ts), which
@@ -128,7 +133,7 @@ export interface GenerationResult {
  * corrupt the TLS session, so this is retried the same way a 500 is —
  * a fresh connection on the next attempt reliably succeeds.
  */
-const MAX_TRELLIS_ATTEMPTS = 6
+const MAX_TRELLIS_ATTEMPTS = 10
 
 async function postTrellisWithRetry(
   headers: Record<string, string>,

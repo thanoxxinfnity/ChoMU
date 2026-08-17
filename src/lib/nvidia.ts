@@ -95,7 +95,7 @@ function handleErrorResponse(status: number, data: unknown): never {
   }
   if (status >= 500) {
     throw new NvidiaApiError(
-      'NVIDIA’s TRELLIS servers returned an error after 3 attempts (not a ChoMU bug — this is NVIDIA’s hosted endpoint itself failing, sometimes for extended periods on their free tier). Wait a while and try again.',
+      `NVIDIA’s TRELLIS servers returned an error after ${MAX_TRELLIS_ATTEMPTS} attempts (not a ChoMU bug — this is NVIDIA’s hosted endpoint itself failing, sometimes for extended periods on their free tier). Wait a while and try again.`,
       { status, code: 'SERVER_ERROR' },
     )
   }

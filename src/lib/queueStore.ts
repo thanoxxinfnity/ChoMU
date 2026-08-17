@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { generateFromText, generateFromImage, NvidiaApiError } from './nvidia'
 import { getApiKey } from './storage'
 import { saveGeneration, newGenerationId } from './history'
+import { runInBackgroundGuard } from './backgroundGuard'
 import type { GenerationParams, GenerationRecord } from './types'
 
 export interface QueueItem {
@@ -121,11 +122,15 @@ export const useQueueStore = create<QueueState>((set, get) => ({
     const onRetry = () =>
       set((s) => ({ items: s.items.map((i) => (i.id === next.id ? { ...i, status: 'warming-up' } : i)) }))
 
+    const remaining = get().items.filter((i) => i.status === 'queued' || i.id === next.id).length
+    const progressLabel = remaining > 1 ? `${remaining} left in queue — ${next.prompt || 'image'}` : next.prompt || 'image'
+
     try {
-      const result =
+      const result = await runInBackgroundGuard(progressLabel, () =>
         next.mode === 'text'
-          ? await generateFromText(apiKey, next.prompt!, next.params, onRetry)
-          : await generateFromImage(apiKey, next.imageBlob!, next.params, onRetry)
+          ? generateFromText(apiKey, next.prompt!, next.params, onRetry)
+          : generateFromImage(apiKey, next.imageBlob!, next.params, onRetry),
+      )
 
       const url = URL.createObjectURL(result.glb)
       set((s) => ({

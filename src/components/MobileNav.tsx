@@ -24,13 +24,20 @@ export function MobileNav() {
           end={end}
           className={({ isActive }) =>
             clsx(
-              'flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium',
+              'relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-transform active:scale-95',
               isActive ? 'text-violet-600 dark:text-violet-400' : 'text-neutral-500 dark:text-neutral-400',
             )
           }
         >
-          <Icon className="h-5 w-5" strokeWidth={2} />
-          {t(labelKey)}
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <span className="absolute top-0 h-1 w-6 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500" />
+              )}
+              <Icon className="h-5 w-5" strokeWidth={2} />
+              {t(labelKey)}
+            </>
+          )}
         </NavLink>
       ))}
     </nav>

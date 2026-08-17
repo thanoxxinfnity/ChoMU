@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Type, ImageUp, Wand2, Loader2, ChevronDown, X, Download, AlertTriangle, ListPlus, Sparkle, Image as ImageIcon, Box } from 'lucide-react'
 import clsx from 'clsx'
 import { ModelViewer } from '../components/ModelViewer'
+import { ZoomableImage } from '../components/ZoomableImage'
 import { ExportMenu } from '../components/ExportMenu'
 import { QueuePanel } from '../components/QueuePanel'
 import { generateFromText, generateFromImage, generateSample, NvidiaApiError } from '../lib/nvidia'
 import { generateImageFlux, PollinationsError } from '../lib/pollinations'
 import { getApiKey } from '../lib/storage'
 import { saveGeneration, newGenerationId, updateGeneration } from '../lib/history'
+import { runInBackgroundGuard } from '../lib/backgroundGuard'
 import { useQueueStore } from '../lib/queueStore'
 import { DEFAULT_PARAMS, SPEED_PRESETS, type GenerationParams, type GenerationRecord, type SpeedPresetId } from '../lib/types'
 import { Link } from 'react-router-dom'
@@ -107,10 +109,11 @@ export function GeneratePage() {
     setWarmingUp(false)
     const onRetry = () => setWarmingUp(true)
     try {
-      const result =
+      const result = await runInBackgroundGuard(mode === 'text' ? prompt.trim() : 'from your image', () =>
         mode === 'text'
-          ? await generateFromText(apiKey, prompt.trim(), params, onRetry)
-          : await generateFromImage(apiKey, imageFile as File, params, onRetry)
+          ? generateFromText(apiKey, prompt.trim(), params, onRetry)
+          : generateFromImage(apiKey, imageFile as File, params, onRetry),
+      )
 
       const url = URL.createObjectURL(result.glb)
       setResultUrl(url)
@@ -155,7 +158,7 @@ export function GeneratePage() {
     await saveGeneration(record)
 
     try {
-      const blob = await generateImageFlux(prompt)
+      const blob = await runInBackgroundGuard(prompt, () => generateImageFlux(prompt))
       const url = URL.createObjectURL(blob)
       setFluxResultUrl(url)
       setFluxResultBlob(blob)
@@ -212,7 +215,7 @@ export function GeneratePage() {
     setWarmingUp(false)
     const onRetry = () => setWarmingUp(true)
     try {
-      const result = await generateSample(apiKey, onRetry)
+      const result = await runInBackgroundGuard(t('generate.sample.label'), () => generateSample(apiKey, onRetry))
       const url = URL.createObjectURL(result.glb)
       setResultUrl(url)
       setResultBlob(result.glb)
@@ -436,7 +439,7 @@ export function GeneratePage() {
             <button
               onClick={handleGenerateImage}
               disabled={!fluxPrompt.trim() || fluxStatus === 'generating'}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:opacity-90 hover:shadow-xl hover:shadow-violet-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {fluxStatus === 'generating' ? (
                 <>
@@ -456,7 +459,7 @@ export function GeneratePage() {
               <button
                 onClick={handleGenerate}
                 disabled={!canGenerate}
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:opacity-90 hover:shadow-xl hover:shadow-violet-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {status === 'generating' || status === 'checking-key' ? (
                   <>
@@ -529,7 +532,7 @@ export function GeneratePage() {
                   <span className="text-sm">{t('generate.generating')}</span>
                 </div>
               ) : fluxResultUrl ? (
-                <img src={fluxResultUrl} className="h-full w-full object-contain" />
+                <ZoomableImage src={fluxResultUrl} className="h-full w-full" />
               ) : (
                 <span className="text-sm text-neutral-400">{t('generate.waiting')}</span>
               )}

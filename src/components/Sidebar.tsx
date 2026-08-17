@@ -32,15 +32,22 @@ export function Sidebar() {
             end={end}
             className={({ isActive }) =>
               clsx(
-                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all active:scale-[0.98]',
                 isActive
                   ? 'bg-gradient-to-r from-violet-500/15 to-fuchsia-500/15 text-violet-700 dark:text-violet-300'
-                  : 'text-neutral-600 hover:bg-black/5 dark:text-neutral-400 dark:hover:bg-white/5',
+                  : 'text-neutral-600 hover:translate-x-0.5 hover:bg-black/5 dark:text-neutral-400 dark:hover:bg-white/5',
               )
             }
           >
-            <Icon className="h-4.5 w-4.5" strokeWidth={2} />
-            {t(labelKey)}
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <span className="absolute -left-1 h-4 w-1 rounded-full bg-gradient-to-b from-violet-500 to-fuchsia-500" />
+                )}
+                <Icon className="h-4.5 w-4.5" strokeWidth={2} />
+                {t(labelKey)}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>

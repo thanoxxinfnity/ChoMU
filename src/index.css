@@ -13,6 +13,17 @@ body {
   margin: 0;
   @apply bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
   font-feature-settings: 'cv11', 'ss01';
+  background-image:
+    radial-gradient(ellipse 60% 40% at 15% 0%, color-mix(in oklab, var(--color-violet-500) 12%, transparent), transparent),
+    radial-gradient(ellipse 50% 35% at 100% 15%, color-mix(in oklab, var(--color-fuchsia-500) 10%, transparent), transparent);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.dark body {
+  background-image:
+    radial-gradient(ellipse 60% 40% at 15% 0%, color-mix(in oklab, var(--color-violet-500) 20%, transparent), transparent),
+    radial-gradient(ellipse 50% 35% at 100% 15%, color-mix(in oklab, var(--color-fuchsia-500) 16%, transparent), transparent);
 }
 
 ::-webkit-scrollbar {
@@ -28,4 +39,25 @@ body {
 
 .glass {
   @apply border border-black/5 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-neutral-900/70;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
 }

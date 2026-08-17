@@ -3,6 +3,7 @@ import { Trash2, Download, X, Type, ImageUp, AlertCircle, Clock, Boxes, Image as
 import { listGenerations, deleteGeneration, updateGeneration, reconcileStalePending } from '../lib/history'
 import type { GenerationRecord } from '../lib/types'
 import { ModelViewer } from '../components/ModelViewer'
+import { ZoomableImage } from '../components/ZoomableImage'
 import { ExportMenu } from '../components/ExportMenu'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
@@ -83,7 +84,7 @@ export function HistoryPage() {
               tabIndex={0}
               onClick={() => setSelected(r)}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelected(r)}
-              className="group relative aspect-square cursor-pointer overflow-hidden rounded-2xl border border-black/10 bg-white text-left shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-neutral-900"
+              className="group relative aspect-square cursor-pointer overflow-hidden rounded-2xl border border-black/10 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-500/10 active:scale-[0.98] dark:border-white/10 dark:bg-neutral-900"
             >
               {r.status === 'success' && r.thumbnail ? (
                 <img src={r.thumbnail} className="h-full w-full object-cover" />
@@ -140,7 +141,10 @@ export function HistoryPage() {
             <div className="p-5">
               {selected.status === 'success' && selected.kind === 'image' && selectedImageUrl ? (
                 <>
-                  <img src={selectedImageUrl} className="h-80 w-full rounded-xl object-contain bg-black/5 dark:bg-white/5" />
+                  <ZoomableImage
+                    src={selectedImageUrl}
+                    className="h-80 w-full rounded-xl bg-black/5 dark:bg-white/5"
+                  />
                   <div className="mt-4 flex items-center justify-between text-xs">
                     <span className="text-neutral-500 dark:text-neutral-400">
                       {new Date(selected.createdAt).toLocaleString()}

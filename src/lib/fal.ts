@@ -95,10 +95,19 @@ export async function generateFromImageFal(
   const imageUrl = await uploadImage(imageBlob, authHeader)
 
   onStatus?.('Queuing 3D generation…')
+  // ss_sampling_steps/slat_sampling_steps default to 12 and texture_size to
+  // 1024 if unset (confirmed against fal.ai's own API docs) — pushing both
+  // up gives a genuinely higher-detail mesh and the max texture resolution
+  // fal.ai supports, instead of silently generating at API defaults.
   const submitJson = await requestJson('https://queue.fal.run/fal-ai/trellis', authHeader, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image_url: imageUrl }),
+    body: JSON.stringify({
+      image_url: imageUrl,
+      ss_sampling_steps: 30,
+      slat_sampling_steps: 30,
+      texture_size: '2048',
+    }),
   })
   const statusUrl = submitJson.status_url as string | undefined
   const responseUrl = submitJson.response_url as string | undefined

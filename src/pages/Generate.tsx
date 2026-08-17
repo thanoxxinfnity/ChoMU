@@ -10,6 +10,7 @@ import { generateImageFlux, PollinationsError } from '../lib/pollinations'
 import { getApiKey, getFalApiKey } from '../lib/storage'
 import { saveGeneration, newGenerationId, updateGeneration } from '../lib/history'
 import { runInBackgroundGuard } from '../lib/backgroundGuard'
+import { notifyGenerationDone } from '../lib/notify'
 import { DEFAULT_PARAMS, type GenerationRecord } from '../lib/types'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../lib/i18n'
@@ -114,11 +115,13 @@ export function GeneratePage() {
         seed,
         glbBlob: result.glb,
       })
+      notifyGenerationDone('ChoMU', 'Your 3D model is ready.')
     } catch (e) {
       const err = e as NvidiaApiError & Partial<FalApiError>
       setError({ message: err.message, isKeyError: err.code === 'INVALID_KEY' })
       setStatus('error')
       await saveGeneration({ ...record, status: 'error', finishedAt: Date.now(), error: err.message })
+      notifyGenerationDone('ChoMU', 'Generation failed — tap to see what happened.')
     } finally {
       setWarmingUp(false)
       setImageProgress(null)
@@ -158,10 +161,12 @@ export function GeneratePage() {
         reader.readAsDataURL(blob)
       })
       await saveGeneration({ ...record, status: 'success', finishedAt: Date.now(), imageBlob: blob, thumbnail })
+      notifyGenerationDone('ChoMU', 'Your image is ready.')
     } catch (e) {
       const err = e as PollinationsError
       setFluxError(err.message)
       setFluxStatus('error')
+      notifyGenerationDone('ChoMU', 'Image generation failed — tap to see what happened.')
       await saveGeneration({ ...record, status: 'error', finishedAt: Date.now(), error: err.message })
     }
   }

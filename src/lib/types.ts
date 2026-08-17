@@ -37,11 +37,17 @@ export interface ChomuSettings {
   theme: 'light' | 'dark' | 'system'
 }
 
+/**
+ * Defaults to the "Quality" sampling-step count (35, the slowest/most
+ * refined option NVIDIA's schema allows — see SPEED_PRESETS below) rather
+ * than a faster preset, so a generation is high-detail out of the box
+ * instead of requiring the user to remember to switch presets every time.
+ */
 export const DEFAULT_PARAMS: Required<GenerationParams> = {
   seed: 0,
-  ssSamplingSteps: 15,
+  ssSamplingSteps: 35,
   ssCfgScale: 7.5,
-  slatSamplingSteps: 15,
+  slatSamplingSteps: 35,
   slatCfgScale: 3,
 }
 

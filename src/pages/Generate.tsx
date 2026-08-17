@@ -24,7 +24,7 @@ export function GeneratePage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [params, setParams] = useState<GenerationParams>(DEFAULT_PARAMS)
-  const [speedPreset, setSpeedPreset] = useState<SpeedPresetId>('balanced')
+  const [speedPreset, setSpeedPreset] = useState<SpeedPresetId>('quality')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [status, setStatus] = useState<'idle' | 'checking-key' | 'generating' | 'done' | 'error'>('idle')
   const [error, setError] = useState<{ message: string; isKeyError: boolean } | null>(null)

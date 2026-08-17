@@ -32,6 +32,14 @@
         <service
             android:name="io.capawesome.capacitorjs.plugins.foregroundservice.AndroidForegroundService"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Runs a generation natively so it survives the WebView (and the whole
+             app) being killed; results are written to disk and collected on the
+             next launch. -->
+        <service
+            android:name=".GenerationService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 
     <!-- Permissions -->

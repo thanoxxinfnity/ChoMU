@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Trash2, Download, X, Type, ImageUp, AlertCircle, Clock, Boxes, Image as ImageIcon } from 'lucide-react'
-import { listGenerations, deleteGeneration, updateGeneration, reconcileStalePending } from '../lib/history'
+import { listGenerations, deleteGeneration, updateGeneration } from '../lib/history'
+import { collectFinishedNativeJobs, reconcileStalePendingAware } from '../lib/jobRecovery'
 import type { GenerationRecord } from '../lib/types'
 import { ModelViewer } from '../components/ModelViewer'
 import { ZoomableImage } from '../components/ZoomableImage'
@@ -17,7 +18,8 @@ export function HistoryPage() {
 
   const refresh = async () => {
     setLoading(true)
-    await reconcileStalePending()
+    await collectFinishedNativeJobs()
+    await reconcileStalePendingAware()
     setRecords(await listGenerations())
     setLoading(false)
   }

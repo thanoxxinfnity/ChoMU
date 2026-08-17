@@ -7,7 +7,7 @@ import { MobileNav } from './components/MobileNav'
 import { GeneratePage } from './pages/Generate'
 import { HistoryPage } from './pages/History'
 import { SettingsPage } from './pages/Settings'
-import { reconcileStalePending } from './lib/history'
+import { collectFinishedNativeJobs, reconcileStalePendingAware } from './lib/jobRecovery'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -24,7 +24,20 @@ function AnimatedRoutes() {
 
 export default function App() {
   useEffect(() => {
-    reconcileStalePending()
+    // Collect anything the native service finished while ChoMU was closed
+    // before deciding which records are genuinely stuck.
+    const recover = async () => {
+      await collectFinishedNativeJobs()
+      await reconcileStalePendingAware()
+    }
+    recover()
+
+    // The service can also finish while the app sits in the background.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') recover()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
   return (

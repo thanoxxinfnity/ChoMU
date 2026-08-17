@@ -10,6 +10,12 @@ import { generateImageFlux, PollinationsError } from '../lib/pollinations'
 import { getApiKey, getFalApiKey } from '../lib/storage'
 import { saveGeneration, newGenerationId, updateGeneration } from '../lib/history'
 import { runInBackgroundGuard } from '../lib/backgroundGuard'
+import {
+  isNativeGenerationAvailable,
+  startNativeGeneration,
+  awaitNativeJob,
+  consumeNativeJob,
+} from '../lib/nativeGenerator'
 import { notifyGenerationDone } from '../lib/notify'
 import { DEFAULT_PARAMS, type GenerationRecord } from '../lib/types'
 import { Link } from 'react-router-dom'
@@ -95,6 +101,50 @@ export function GeneratePage() {
     setImageProgress(null)
     setBgProtectionWarning(null)
     const onRetry = (attempt: number, maxAttempts: number) => setRetryInfo({ attempt, maxAttempts })
+
+    // Text-to-3D on Android is handed to the native service, which owns the
+    // request from here — it finishes and saves the model even if ChoMU is
+    // swiped away mid-generation.
+    if (mode === 'text' && isNativeGenerationAvailable()) {
+      try {
+        await startNativeGeneration({
+          jobId: id,
+          prompt: prompt.trim(),
+          apiKey,
+          ssSteps: DEFAULT_PARAMS.ssSamplingSteps,
+          slatSteps: DEFAULT_PARAMS.slatSamplingSteps,
+        })
+
+        const job = await awaitNativeJob(id, (attempt) => setRetryInfo({ attempt, maxAttempts: 10 }))
+
+        if (job.status === 'success') {
+          const { glb, seed } = await consumeNativeJob(id)
+          if (!glb) throw new Error('The finished model could not be read back from storage.')
+          const url = URL.createObjectURL(glb)
+          setResultUrl(url)
+          setResultBlob(glb)
+          setResultSeed(seed ?? null)
+          setStatus('done')
+          await saveGeneration({ ...record, status: 'success', finishedAt: Date.now(), seed, glbBlob: glb })
+          notifyGenerationDone('ChoMU', 'Your 3D model is ready.')
+        } else {
+          const message = job.error ?? 'Generation failed.'
+          await consumeNativeJob(id).catch(() => undefined)
+          setError({ message, isKeyError: message.includes('API key') })
+          setStatus('error')
+          await saveGeneration({ ...record, status: 'error', finishedAt: Date.now(), error: message })
+        }
+      } catch (e) {
+        const message = (e as Error).message
+        setError({ message, isKeyError: false })
+        setStatus('error')
+        await saveGeneration({ ...record, status: 'error', finishedAt: Date.now(), error: message })
+      } finally {
+        setRetryInfo(null)
+      }
+      return
+    }
+
     try {
       const result = await runInBackgroundGuard(
         mode === 'text' ? prompt.trim() : 'from your image',

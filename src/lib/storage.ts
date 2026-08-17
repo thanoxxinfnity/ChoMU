@@ -2,6 +2,7 @@ import { Preferences } from '@capacitor/preferences'
 import type { ChomuSettings } from './types'
 
 const API_KEY_STORAGE_KEY = 'chomu.apiKey'
+const FAL_API_KEY_STORAGE_KEY = 'chomu.falApiKey'
 const THEME_STORAGE_KEY = 'chomu.theme'
 const LANGUAGE_STORAGE_KEY = 'chomu.language'
 
@@ -23,6 +24,25 @@ export async function setApiKey(key: string): Promise<void> {
 
 export async function clearApiKey(): Promise<void> {
   await Preferences.remove({ key: API_KEY_STORAGE_KEY })
+}
+
+/**
+ * fal.ai's hosted TRELLIS model accepts real uploaded photos for
+ * image-to-3D (unlike NVIDIA's free preview, which only accepts its own
+ * preset gallery images server-side). It's a separate, paid pay-per-use
+ * service with its own API key — optional, only used when set.
+ */
+export async function getFalApiKey(): Promise<string> {
+  const { value } = await Preferences.get({ key: FAL_API_KEY_STORAGE_KEY })
+  return value ?? ''
+}
+
+export async function setFalApiKey(key: string): Promise<void> {
+  await Preferences.set({ key: FAL_API_KEY_STORAGE_KEY, value: key.trim() })
+}
+
+export async function clearFalApiKey(): Promise<void> {
+  await Preferences.remove({ key: FAL_API_KEY_STORAGE_KEY })
 }
 
 export async function getTheme(): Promise<ChomuSettings['theme']> {

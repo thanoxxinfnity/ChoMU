@@ -62,6 +62,9 @@ const STRINGS = {
     'settings.apiKey.saved': 'Saved ✓',
     'settings.apiKey.test': 'Test API key',
     'settings.apiKey.clear': 'Clear',
+    'settings.falKey.title': 'fal.ai API Key (optional)',
+    'settings.falKey.description':
+      "For real photo image-to-3D — unlike NVIDIA's free preview, fal.ai's hosted TRELLIS genuinely accepts your own uploaded photos. It's a separate, paid pay-per-use service with its own key (get one at fal.ai). When set, Image-to-3D uses fal.ai automatically; when empty, it falls back to NVIDIA (which only accepts its own preset images).",
     'settings.appearance': 'Appearance',
     'settings.language': 'Language',
     'settings.theme.light': 'Light',
@@ -69,7 +72,7 @@ const STRINGS = {
     'settings.theme.system': 'System',
     'settings.knownLimitation.title': 'Known NVIDIA-side limitation:',
     'settings.knownLimitation.body':
-      'as of now, NVIDIA\'s hosted TRELLIS endpoint only accepts its own preset gallery images for Image-to-3D — custom image uploads are rejected server-side (Expected: example_id, got: asset_id). Text-to-3D is fully working. ChoMU will surface this exact error if it happens, and will start working automatically the moment NVIDIA lifts the restriction — no app update needed.',
+      'as of now, NVIDIA\'s hosted TRELLIS endpoint only accepts its own preset gallery images for Image-to-3D — custom image uploads are rejected server-side (Expected: example_id, got: asset_id). Text-to-3D is fully working. ChoMU will surface this exact error if it happens, and will start working automatically the moment NVIDIA lifts the restriction — no app update needed. In the meantime, add a fal.ai API key above to use real photo uploads for Image-to-3D right now.',
   },
   hi: {
     'nav.generate': 'जनरेट',
@@ -131,6 +134,9 @@ const STRINGS = {
     'settings.apiKey.saved': 'सेव हो गया ✓',
     'settings.apiKey.test': 'API key टेस्ट करें',
     'settings.apiKey.clear': 'हटाएं',
+    'settings.falKey.title': 'fal.ai API Key (वैकल्पिक)',
+    'settings.falKey.description':
+      'असली फोटो से image-to-3D के लिए — NVIDIA के free preview के उलट, fal.ai का hosted TRELLIS आपकी खुद अपलोड की गई फोटो सच में accept करता है। ये अलग, paid pay-per-use service है, अपनी खुद की key के साथ (fal.ai पर मिलेगी)। Key set होने पर Image-to-3D अपने आप fal.ai इस्तेमाल करेगा; empty होने पर NVIDIA पर वापस चला जाएगा (जो सिर्फ अपनी preset images accept करता है)।',
     'settings.appearance': 'दिखावट',
     'settings.language': 'भाषा',
     'settings.theme.light': 'लाइट',
@@ -138,7 +144,7 @@ const STRINGS = {
     'settings.theme.system': 'सिस्टम',
     'settings.knownLimitation.title': 'NVIDIA की तरफ से जानी हुई सीमा:',
     'settings.knownLimitation.body':
-      'अभी NVIDIA का hosted TRELLIS endpoint Image-to-3D के लिए सिर्फ अपनी preset gallery images ही accept करता है — custom image uploads server-side reject हो जाते हैं (Expected: example_id, got: asset_id)। Text-to-3D पूरी तरह काम कर रहा है। ChoMU यही exact error दिखाएगा अगर ऐसा हो, और जैसे ही NVIDIA ये restriction हटाएगा, बिना किसी app update के अपने आप काम करने लगेगा।',
+      'अभी NVIDIA का hosted TRELLIS endpoint Image-to-3D के लिए सिर्फ अपनी preset gallery images ही accept करता है — custom image uploads server-side reject हो जाते हैं (Expected: example_id, got: asset_id)। Text-to-3D पूरी तरह काम कर रहा है। ChoMU यही exact error दिखाएगा अगर ऐसा हो, और जैसे ही NVIDIA ये restriction हटाएगा, बिना किसी app update के अपने आप काम करने लगेगा। तब तक, ऊपर fal.ai API key डालकर अभी असली फोटो से Image-to-3D इस्तेमाल कर सकते हो।',
   },
 } as const
 

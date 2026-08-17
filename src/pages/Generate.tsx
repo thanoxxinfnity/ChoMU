@@ -6,8 +6,9 @@ import { ZoomableImage } from '../components/ZoomableImage'
 import { ExportMenu } from '../components/ExportMenu'
 import { QueuePanel } from '../components/QueuePanel'
 import { generateFromText, generateFromImage, generateSample, NvidiaApiError } from '../lib/nvidia'
+import { generateFromImageFal, FalApiError } from '../lib/fal'
 import { generateImageFlux, PollinationsError } from '../lib/pollinations'
-import { getApiKey } from '../lib/storage'
+import { getApiKey, getFalApiKey } from '../lib/storage'
 import { saveGeneration, newGenerationId, updateGeneration } from '../lib/history'
 import { runInBackgroundGuard } from '../lib/backgroundGuard'
 import { useQueueStore } from '../lib/queueStore'
@@ -32,6 +33,7 @@ export function GeneratePage() {
   const [resultBlob, setResultBlob] = useState<Blob | null>(null)
   const [resultSeed, setResultSeed] = useState<number | null>(null)
   const [warmingUp, setWarmingUp] = useState(false)
+  const [imageProgress, setImageProgress] = useState<string | null>(null)
   const [batchMode, setBatchMode] = useState(false)
   const [fluxPrompt, setFluxPrompt] = useState('')
   const [fluxStatus, setFluxStatus] = useState<'idle' | 'generating' | 'done' | 'error'>('idle')
@@ -83,8 +85,12 @@ export function GeneratePage() {
   const handleGenerate = async () => {
     setError(null)
     setStatus('checking-key')
-    const apiKey = await getApiKey()
-    if (!apiKey.trim()) {
+
+    const falApiKey = mode === 'image' ? await getFalApiKey() : ''
+    const useFal = mode === 'image' && !!falApiKey.trim()
+
+    const apiKey = useFal ? '' : await getApiKey()
+    if (!useFal && !apiKey.trim()) {
       setError({ message: t('generate.noApiKey'), isKeyError: true })
       setStatus('error')
       return
@@ -106,34 +112,40 @@ export function GeneratePage() {
     setStatus('generating')
     setResultUrl(null)
     setResultBlob(null)
+    setResultSeed(null)
     setWarmingUp(false)
+    setImageProgress(null)
     const onRetry = () => setWarmingUp(true)
     try {
       const result = await runInBackgroundGuard(mode === 'text' ? prompt.trim() : 'from your image', () =>
         mode === 'text'
           ? generateFromText(apiKey, prompt.trim(), params, onRetry)
-          : generateFromImage(apiKey, imageFile as File, params, onRetry),
+          : useFal
+            ? generateFromImageFal(falApiKey, imageFile as File, setImageProgress)
+            : generateFromImage(apiKey, imageFile as File, params, onRetry),
       )
 
+      const seed: number | undefined = 'seed' in result ? (result.seed as number) : undefined
       const url = URL.createObjectURL(result.glb)
       setResultUrl(url)
       setResultBlob(result.glb)
-      setResultSeed(result.seed)
+      setResultSeed(seed ?? null)
       setStatus('done')
       await saveGeneration({
         ...record,
         status: 'success',
         finishedAt: Date.now(),
-        seed: result.seed,
+        seed,
         glbBlob: result.glb,
       })
     } catch (e) {
-      const err = e as NvidiaApiError
+      const err = e as NvidiaApiError & Partial<FalApiError>
       setError({ message: err.message, isKeyError: err.code === 'INVALID_KEY' })
       setStatus('error')
       await saveGeneration({ ...record, status: 'error', finishedAt: Date.now(), error: err.message })
     } finally {
       setWarmingUp(false)
+      setImageProgress(null)
     }
   }
 
@@ -464,7 +476,7 @@ export function GeneratePage() {
                 {status === 'generating' || status === 'checking-key' ? (
                   <>
                     <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                    {warmingUp ? t('generate.warmingUp') : t('generate.generating')}
+                    {imageProgress || (warmingUp ? t('generate.warmingUp') : t('generate.generating'))}
                   </>
                 ) : (
                   <>
@@ -572,7 +584,11 @@ export function GeneratePage() {
           {mode !== 'flux' && resultUrl && resultBlob && (
             <div className="flex items-center justify-between rounded-xl border border-black/10 bg-white px-4 py-3 text-xs dark:border-white/10 dark:bg-neutral-900">
               <span className="text-neutral-500 dark:text-neutral-400">
-                {t('generate.seed')} <span className="font-mono text-neutral-700 dark:text-neutral-300">{resultSeed}</span>
+                {resultSeed != null && (
+                  <>
+                    {t('generate.seed')} <span className="font-mono text-neutral-700 dark:text-neutral-300">{resultSeed}</span>
+                  </>
+                )}
               </span>
               <ExportMenu
                 glbBlob={resultBlob}

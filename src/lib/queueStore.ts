@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { generateFromText, generateFromImage, NvidiaApiError } from './nvidia'
-import { getApiKey } from './storage'
+import { generateFromImageFal, FalApiError } from './fal'
+import { getApiKey, getFalApiKey } from './storage'
 import { saveGeneration, newGenerationId } from './history'
 import { runInBackgroundGuard } from './backgroundGuard'
 import type { GenerationParams, GenerationRecord } from './types'
@@ -99,8 +100,10 @@ export const useQueueStore = create<QueueState>((set, get) => ({
     set((s) => ({ items: s.items.map((i) => (i.id === next.id ? { ...i, status: 'generating' } : i)) }))
 
     const save = saveGeneration
-    const apiKey = await getApiKey()
-    if (!apiKey.trim()) {
+    const falApiKey = next.mode === 'image' ? await getFalApiKey() : ''
+    const useFal = next.mode === 'image' && !!falApiKey.trim()
+    const apiKey = useFal ? '' : await getApiKey()
+    if (!useFal && !apiKey.trim()) {
       set((s) => ({
         items: s.items.map((i) => (i.id === next.id ? { ...i, status: 'error', error: 'No API key set in Settings.' } : i)),
       }))
@@ -129,12 +132,15 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       const result = await runInBackgroundGuard(progressLabel, () =>
         next.mode === 'text'
           ? generateFromText(apiKey, next.prompt!, next.params, onRetry)
-          : generateFromImage(apiKey, next.imageBlob!, next.params, onRetry),
+          : useFal
+            ? generateFromImageFal(falApiKey, next.imageBlob!)
+            : generateFromImage(apiKey, next.imageBlob!, next.params, onRetry),
       )
 
+      const seed: number | undefined = 'seed' in result ? (result.seed as number) : undefined
       const url = URL.createObjectURL(result.glb)
       set((s) => ({
-        items: s.items.map((i) => (i.id === next.id ? { ...i, status: 'done', glbUrl: url, seed: result.seed } : i)),
+        items: s.items.map((i) => (i.id === next.id ? { ...i, status: 'done', glbUrl: url, seed } : i)),
       }))
       await save({
         id: next.historyId,
@@ -144,12 +150,12 @@ export const useQueueStore = create<QueueState>((set, get) => ({
         status: 'success',
         createdAt: Date.now(),
         finishedAt: Date.now(),
-        seed: result.seed,
+        seed,
         glbBlob: result.glb,
         params: next.params,
       })
     } catch (e) {
-      const err = e as NvidiaApiError
+      const err = e as NvidiaApiError & Partial<FalApiError>
       set((s) => ({ items: s.items.map((i) => (i.id === next.id ? { ...i, status: 'error', error: err.message } : i)) }))
       await save({
         id: next.historyId,

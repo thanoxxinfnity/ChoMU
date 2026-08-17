@@ -30,6 +30,7 @@ export function GeneratePage() {
   const [resultSeed, setResultSeed] = useState<number | null>(null)
   const [warmingUp, setWarmingUp] = useState(false)
   const [imageProgress, setImageProgress] = useState<string | null>(null)
+  const [bgProtectionWarning, setBgProtectionWarning] = useState<string | null>(null)
   const [fluxPrompt, setFluxPrompt] = useState('')
   const [fluxStatus, setFluxStatus] = useState<'idle' | 'generating' | 'done' | 'error'>('idle')
   const [fluxError, setFluxError] = useState<string | null>(null)
@@ -92,14 +93,20 @@ export function GeneratePage() {
     setResultSeed(null)
     setWarmingUp(false)
     setImageProgress(null)
+    setBgProtectionWarning(null)
     const onRetry = () => setWarmingUp(true)
     try {
-      const result = await runInBackgroundGuard(mode === 'text' ? prompt.trim() : 'from your image', () =>
-        mode === 'text'
-          ? generateFromText(apiKey, prompt.trim(), DEFAULT_PARAMS, onRetry)
-          : useFal
-            ? generateFromImageFal(falApiKey, imageFile as File, setImageProgress)
-            : generateFromImage(apiKey, imageFile as File, DEFAULT_PARAMS, onRetry),
+      const result = await runInBackgroundGuard(
+        mode === 'text' ? prompt.trim() : 'from your image',
+        () =>
+          mode === 'text'
+            ? generateFromText(apiKey, prompt.trim(), DEFAULT_PARAMS, onRetry)
+            : useFal
+              ? generateFromImageFal(falApiKey, imageFile as File, setImageProgress)
+              : generateFromImage(apiKey, imageFile as File, DEFAULT_PARAMS, onRetry),
+        (active, reason) => {
+          if (!active) setBgProtectionWarning(reason ?? 'Keep ChoMU open until this finishes.')
+        },
       )
 
       const seed: number | undefined = 'seed' in result ? (result.seed as number) : undefined
@@ -135,6 +142,7 @@ export function GeneratePage() {
     setFluxStatus('generating')
     setFluxResultUrl(null)
     setFluxResultBlob(null)
+    setBgProtectionWarning(null)
 
     const id = newGenerationId()
     const record: GenerationRecord = {
@@ -149,7 +157,9 @@ export function GeneratePage() {
     await saveGeneration(record)
 
     try {
-      const blob = await runInBackgroundGuard(prompt, () => generateImageFlux(prompt))
+      const blob = await runInBackgroundGuard(prompt, () => generateImageFlux(prompt), (active, reason) => {
+        if (!active) setBgProtectionWarning(reason ?? 'Keep ChoMU open until this finishes.')
+      })
       const url = URL.createObjectURL(blob)
       setFluxResultUrl(url)
       setFluxResultBlob(blob)
@@ -322,6 +332,13 @@ export function GeneratePage() {
                 </>
               )}
             </button>
+          )}
+
+          {bgProtectionWarning && (status === 'generating' || fluxStatus === 'generating') && (
+            <div className="flex items-start gap-1.5 rounded-xl bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              Background protection couldn't start — please keep ChoMU open until this finishes. {bgProtectionWarning}
+            </div>
           )}
 
           {error && (

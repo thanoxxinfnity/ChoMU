@@ -36,7 +36,7 @@ interface ChomuGeneratorPlugin {
     ssSteps?: number
     slatSteps?: number
   }): Promise<{ started: boolean }>
-  getJobs(): Promise<{ jobs: NativeJob[] }>
+  getJobs(): Promise<{ jobs: NativeJob[]; serviceRunning: boolean }>
   consumeJob(options: { jobId: string }): Promise<{
     base64?: string
     status?: string
@@ -44,6 +44,7 @@ interface ChomuGeneratorPlugin {
     seed?: number
     error?: string
   }>
+  clearOrphanedNotifications(): Promise<{ cleared: boolean }>
 }
 
 const ChomuGenerator = registerPlugin<ChomuGeneratorPlugin>('ChomuGenerator')
@@ -63,12 +64,30 @@ export async function startNativeGeneration(options: {
 }
 
 export async function listNativeJobs(): Promise<NativeJob[]> {
-  if (!isNativeGenerationAvailable()) return []
+  return (await getNativeJobState()).jobs
+}
+
+export async function getNativeJobState(): Promise<{ jobs: NativeJob[]; serviceRunning: boolean }> {
+  if (!isNativeGenerationAvailable()) return { jobs: [], serviceRunning: false }
   try {
-    const { jobs } = await ChomuGenerator.getJobs()
-    return jobs ?? []
+    const { jobs, serviceRunning } = await ChomuGenerator.getJobs()
+    return { jobs: jobs ?? [], serviceRunning: !!serviceRunning }
   } catch {
-    return []
+    return { jobs: [], serviceRunning: false }
+  }
+}
+
+/**
+ * Removes an ongoing-generation notification stranded by a process that was
+ * killed mid-job — otherwise it sits in the shade indefinitely claiming
+ * ChoMU is still working.
+ */
+export async function clearOrphanedNotifications(): Promise<void> {
+  if (!isNativeGenerationAvailable()) return
+  try {
+    await ChomuGenerator.clearOrphanedNotifications()
+  } catch {
+    // Nothing to clean up, or the plugin isn't present in this build.
   }
 }
 

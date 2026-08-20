@@ -51,11 +51,37 @@ public class GenerationService extends Service {
 
     private static final String CHANNEL_PROGRESS = "chomu-generation";
     private static final String CHANNEL_DONE = "chomu-generation-done";
-    private static final int PROGRESS_NOTIFICATION_ID = 4301;
+    static final int PROGRESS_NOTIFICATION_ID = 4301;
 
     /** Matches the JS-side cap so both paths behave identically. */
     private static final int MAX_ATTEMPTS = 10;
-    private static final int TIMEOUT_MS = 300_000;
+
+    /**
+     * A successful generation comes back in ~12s and a server-side failure in
+     * ~91s, so a long per-attempt read timeout only buys dead waiting on a
+     * connection that has already stalled.
+     */
+    private static final int READ_TIMEOUT_MS = 120_000;
+
+    /**
+     * Hard ceiling on a single job regardless of how many attempts are left.
+     * Without it, ten stalled attempts could hold the ongoing notification up
+     * for the better part of an hour, which is what left a "ChoMU is
+     * generating" notification sitting on screen for 11 hours.
+     */
+    private static final long JOB_BUDGET_MS = 15 * 60 * 1000L;
+
+    /**
+     * True only while this process actually has a job in flight. A killed
+     * process resets it, which is precisely how the app detects on relaunch
+     * that a leftover notification (or a "pending" job file) is orphaned
+     * rather than live.
+     */
+    private static volatile boolean running = false;
+
+    public static boolean isRunning() {
+        return running;
+    }
 
     public static final String EXTRA_JOB_ID = "jobId";
     public static final String EXTRA_PROMPT = "prompt";
@@ -106,8 +132,10 @@ public class GenerationService extends Service {
         }
 
         startAsForeground(prompt);
-        if (!wakeLock.isHeld()) wakeLock.acquire(30 * 60 * 1000L);
+        // Bounded so a wedged job can never hold the CPU awake indefinitely.
+        if (!wakeLock.isHeld()) wakeLock.acquire(JOB_BUDGET_MS + 60_000L);
         activeJobs++;
+        running = true;
 
         writeJobState(jobId, "pending", prompt, null, null, 0);
 
@@ -131,8 +159,15 @@ public class GenerationService extends Service {
 
     private void runJob(String jobId, String prompt, String apiKey, int ssSteps, int slatSteps) {
         String lastError = null;
+        final long deadline = System.currentTimeMillis() + JOB_BUDGET_MS;
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            if (System.currentTimeMillis() >= deadline) {
+                lastError = "Gave up after 15 minutes of NVIDIA's servers not responding. "
+                        + "Their endpoint is having a bad patch — try again later.";
+                break;
+            }
+
             updateProgress(prompt, attempt);
             writeJobState(jobId, "pending", prompt, null, null, attempt);
 
@@ -148,8 +183,8 @@ public class GenerationService extends Service {
                 conn.setRequestProperty("Authorization", "Bearer " + apiKey);
                 conn.setRequestProperty("Content-Type", "application/json");
                 conn.setRequestProperty("Accept", "application/json");
-                conn.setConnectTimeout(60_000);
-                conn.setReadTimeout(TIMEOUT_MS);
+                conn.setConnectTimeout(30_000);
+                conn.setReadTimeout(READ_TIMEOUT_MS);
                 conn.setDoOutput(true);
 
                 try (OutputStream os = conn.getOutputStream()) {
@@ -223,9 +258,22 @@ public class GenerationService extends Service {
         activeJobs--;
         if (activeJobs <= 0) {
             activeJobs = 0;
+            running = false;
             if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
             stopForeground(STOP_FOREGROUND_REMOVE);
+            // stopForeground alone has been observed to leave the notification
+            // behind on some OEM builds; cancelling by id is unambiguous.
+            cancelProgressNotification();
             stopSelf();
+        }
+    }
+
+    private void cancelProgressNotification() {
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) nm.cancel(PROGRESS_NOTIFICATION_ID);
+        } catch (Exception e) {
+            Log.w(TAG, "Could not cancel progress notification", e);
         }
     }
 
@@ -334,8 +382,12 @@ public class GenerationService extends Service {
 
     @Override
     public void onDestroy() {
+        running = false;
         if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
         if (executor != null) executor.shutdown();
+        // Covers the paths that don't go through finishJob() — the OS
+        // reclaiming the service, or the user force-stopping the app.
+        cancelProgressNotification();
         super.onDestroy();
     }
 

@@ -8,7 +8,13 @@
  * history — so a model generated while the app was closed is simply there in
  * the Gallery when the user comes back.
  */
-import { listNativeJobs, consumeNativeJob, isNativeGenerationAvailable } from './nativeGenerator'
+import {
+  listNativeJobs,
+  getNativeJobState,
+  consumeNativeJob,
+  clearOrphanedNotifications,
+  isNativeGenerationAvailable,
+} from './nativeGenerator'
 import { getGeneration, saveGeneration, updateGeneration, listGenerations } from './history'
 import type { GenerationRecord } from './types'
 
@@ -16,7 +22,24 @@ import type { GenerationRecord } from './types'
 export async function collectFinishedNativeJobs(): Promise<number> {
   if (!isNativeGenerationAvailable()) return 0
 
-  const jobs = await listNativeJobs()
+  const { jobs, serviceRunning } = await getNativeJobState()
+
+  // A leftover "generating" notification with no service behind it is stale.
+  if (!serviceRunning) await clearOrphanedNotifications()
+
+  // Likewise a "pending" job file: if the process died mid-request there is
+  // nothing left to finish it, so report it rather than leave it hanging.
+  const orphanedPending = serviceRunning ? [] : jobs.filter((j) => j.status === 'pending')
+  for (const job of orphanedPending) {
+    const message =
+      'This generation was interrupted before it finished — the app was force-stopped or the system reclaimed it. Try again.'
+    const existing = await getGeneration(job.jobId)
+    if (existing && existing.status === 'pending') {
+      await updateGeneration(job.jobId, { status: 'error', finishedAt: Date.now(), error: message })
+    }
+    await consumeNativeJob(job.jobId).catch(() => undefined)
+  }
+
   const finished = jobs.filter((j) => j.status === 'success' || j.status === 'error')
   let collected = 0
 

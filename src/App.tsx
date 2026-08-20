@@ -8,6 +8,7 @@ import { GeneratePage } from './pages/Generate'
 import { HistoryPage } from './pages/History'
 import { SettingsPage } from './pages/Settings'
 import { collectFinishedNativeJobs, reconcileStalePendingAware } from './lib/jobRecovery'
+import { clearStaleForegroundService } from './lib/backgroundGuard'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -31,6 +32,10 @@ export default function App() {
       await reconcileStalePendingAware()
     }
     recover()
+
+    // Sweep away any "generating" notification left over from a session that
+    // was killed before it could stop its own service.
+    clearStaleForegroundService()
 
     // The service can also finish while the app sits in the background.
     const onVisible = () => {

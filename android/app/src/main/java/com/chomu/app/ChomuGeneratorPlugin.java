@@ -1,5 +1,6 @@
 package com.chomu.app;
 
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
@@ -88,6 +89,35 @@ public class ChomuGeneratorPlugin extends Plugin {
 
         JSObject result = new JSObject();
         result.put("jobs", jobs);
+        // Lets the web layer tell a live job apart from one whose process was
+        // killed — a "pending" file with no service behind it is orphaned.
+        result.put("serviceRunning", GenerationService.isRunning());
+        call.resolve(result);
+    }
+
+    /**
+     * Clears an ongoing-generation notification left behind by a process that
+     * was killed mid-job. Because the service's running flag is per-process,
+     * a false here after a restart means nothing is actually generating and
+     * any surviving notification is stale.
+     */
+    @PluginMethod
+    public void clearOrphanedNotifications(PluginCall call) {
+        JSObject result = new JSObject();
+        if (GenerationService.isRunning()) {
+            result.put("cleared", false);
+            call.resolve(result);
+            return;
+        }
+        try {
+            NotificationManager nm =
+                    (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) nm.cancel(GenerationService.PROGRESS_NOTIFICATION_ID);
+            result.put("cleared", true);
+        } catch (Exception e) {
+            Log.w(TAG, "Could not clear orphaned notification", e);
+            result.put("cleared", false);
+        }
         call.resolve(result);
     }
 

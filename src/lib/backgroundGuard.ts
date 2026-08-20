@@ -46,6 +46,24 @@ async function ensureChannel(): Promise<void> {
 }
 
 /**
+ * Stops a foreground service stranded by a previous run.
+ *
+ * This module's `activeCount` lives in the WebView, so it is always 0 on a
+ * fresh load — meaning nothing this process started is in flight, and any
+ * service still alive from a killed session is an orphan whose "ChoMU is
+ * generating" notification would otherwise sit there indefinitely (observed
+ * lingering for 11 hours). Called once at startup.
+ */
+export async function clearStaleForegroundService(): Promise<void> {
+  if (!isSupported() || activeCount > 0) return
+  try {
+    await ForegroundService.stopForegroundService()
+  } catch {
+    // Nothing was running — the normal case.
+  }
+}
+
+/**
  * Runs `task` guarded by a foreground-service notification so it can survive
  * the app being backgrounded. Safe to call from multiple in-flight
  * generations at once — the notification body updates to reflect the

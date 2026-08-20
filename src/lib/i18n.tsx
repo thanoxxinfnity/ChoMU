@@ -53,6 +53,9 @@ const STRINGS = {
     'settings.falKey.title': 'fal.ai API Key (optional)',
     'settings.falKey.description':
       "For real photo image-to-3D — unlike NVIDIA's free preview, fal.ai's hosted TRELLIS genuinely accepts your own uploaded photos. It's a separate, paid pay-per-use service with its own key (get one at fal.ai). When set, Image-to-3D uses fal.ai automatically; when empty, it falls back to NVIDIA (which only accepts its own preset images).",
+    'settings.meshyKey.title': 'Meshy API Key (optional — rigging)',
+    'settings.meshyKey.description':
+      "Adds a Rig & Animate action to models in your Gallery: Meshy fits a skeleton to a humanoid model and returns it with walk and run animations, which ChoMU can play in the viewer. Rigging only works on textured humanoid models with clear arms and legs — vehicles and abstract shapes will be rejected. Meshy only allows API access on their paid plans, so this stays off unless you add a key.",
     'settings.appearance': 'Appearance',
     'settings.language': 'Language',
     'settings.theme.light': 'Light',
@@ -113,6 +116,9 @@ const STRINGS = {
     'settings.falKey.title': 'fal.ai API Key (वैकल्पिक)',
     'settings.falKey.description':
       'असली फोटो से image-to-3D के लिए — NVIDIA के free preview के उलट, fal.ai का hosted TRELLIS आपकी खुद अपलोड की गई फोटो सच में accept करता है। ये अलग, paid pay-per-use service है, अपनी खुद की key के साथ (fal.ai पर मिलेगी)। Key set होने पर Image-to-3D अपने आप fal.ai इस्तेमाल करेगा; empty होने पर NVIDIA पर वापस चला जाएगा (जो सिर्फ अपनी preset images accept करता है)।',
+    'settings.meshyKey.title': 'Meshy API Key (वैकल्पिक — रिगिंग)',
+    'settings.meshyKey.description':
+      'गैलरी के मॉडल में "Rig & Animate" का ऑप्शन जोड़ता है: Meshy humanoid मॉडल में skeleton (हड्डियाँ) डालकर walk/run animation के साथ वापस देता है, जो ChoMU के viewer में चल जाएगा। ये सिर्फ textured humanoid मॉडल पर काम करता है जिनके हाथ-पैर साफ दिखें — गाड़ी या abstract शेप reject हो जाएँगे। Meshy API सिर्फ उनके paid plan में मिलता है, इसलिए key डाले बिना ये बंद रहेगा।',
     'settings.appearance': 'दिखावट',
     'settings.language': 'भाषा',
     'settings.theme.light': 'लाइट',

@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Trash2, Download, X, Type, ImageUp, AlertCircle, Clock, Boxes, Image as ImageIcon } from 'lucide-react'
+import { Trash2, Download, X, Type, ImageUp, AlertCircle, Clock, Boxes, Image as ImageIcon, Bone, Loader2 } from 'lucide-react'
 import { listGenerations, deleteGeneration, updateGeneration } from '../lib/history'
 import { collectFinishedNativeJobs, reconcileStalePendingAware } from '../lib/jobRecovery'
+import { getMeshyApiKey } from '../lib/storage'
+import { rigModel, MeshyApiError } from '../lib/meshy'
+import { saveGeneration, newGenerationId } from '../lib/history'
 import type { GenerationRecord } from '../lib/types'
 import { ModelViewer } from '../components/ModelViewer'
 import { ZoomableImage } from '../components/ZoomableImage'
@@ -15,6 +18,9 @@ export function HistoryPage() {
   const [records, setRecords] = useState<GenerationRecord[]>([])
   const [selected, setSelected] = useState<GenerationRecord | null>(null)
   const [loading, setLoading] = useState(true)
+  const [meshyKey, setMeshyKey] = useState('')
+  const [rigStatus, setRigStatus] = useState<string | null>(null)
+  const [rigError, setRigError] = useState<string | null>(null)
 
   const refresh = async () => {
     setLoading(true)
@@ -26,7 +32,36 @@ export function HistoryPage() {
 
   useEffect(() => {
     refresh()
+    getMeshyApiKey().then(setMeshyKey)
   }, [])
+
+  /** Rigging produces a new, separate model rather than replacing the
+   *  original, so the untouched static mesh stays in the Gallery. */
+  const handleRig = async (record: GenerationRecord) => {
+    if (!record.glbBlob) return
+    setRigError(null)
+    setRigStatus('Starting…')
+    try {
+      const { glb } = await rigModel(meshyKey, record.glbBlob, setRigStatus)
+      const id = newGenerationId()
+      await saveGeneration({
+        id,
+        mode: 'text',
+        prompt: `${record.prompt ?? 'model'} (rigged)`,
+        status: 'success',
+        createdAt: Date.now(),
+        finishedAt: Date.now(),
+        glbBlob: glb,
+        params: {},
+      })
+      setSelected(null)
+      await refresh()
+    } catch (e) {
+      setRigError((e as MeshyApiError).message)
+    } finally {
+      setRigStatus(null)
+    }
+  }
 
   const selectedUrl = useMemo(() => {
     if (!selected?.glbBlob) return null
@@ -182,11 +217,30 @@ export function HistoryPage() {
                       }
                     }}
                   />
+                  {rigError && (
+                    <div className="mt-3 rounded-xl bg-red-500/10 p-3 text-xs text-red-700 dark:text-red-400">
+                      {rigError}
+                    </div>
+                  )}
                   <div className="mt-4 flex items-center justify-between text-xs">
                     <span className="text-neutral-500 dark:text-neutral-400">
                       {new Date(selected.createdAt).toLocaleString()} · seed {selected.seed}
                     </span>
                     <div className="flex items-center gap-2">
+                      {meshyKey.trim() && (
+                        <button
+                          onClick={() => handleRig(selected)}
+                          disabled={!!rigStatus}
+                          className="flex items-center gap-1.5 rounded-lg bg-violet-500/10 px-3 py-1.5 font-medium text-violet-600 disabled:opacity-50 dark:text-violet-300"
+                        >
+                          {rigStatus ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Bone className="h-3.5 w-3.5" />
+                          )}
+                          {rigStatus ?? 'Rig & Animate'}
+                        </button>
+                      )}
                       <ExportMenu
                         glbBlob={selected.glbBlob!}
                         baseName={selected.prompt || 'model'}

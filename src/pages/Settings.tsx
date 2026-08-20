@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Eye, EyeOff, KeyRound, CheckCircle2, XCircle, Loader2, Monitor, Sun, Moon, Trash2, Languages, Image as ImageIcon } from 'lucide-react'
-import { getApiKey, setApiKey as persistApiKey, clearApiKey, getFalApiKey, setFalApiKey as persistFalApiKey, clearFalApiKey } from '../lib/storage'
+import { Eye, EyeOff, KeyRound, CheckCircle2, XCircle, Loader2, Monitor, Sun, Moon, Trash2, Languages, Image as ImageIcon, Bone } from 'lucide-react'
+import {
+  getApiKey, setApiKey as persistApiKey, clearApiKey,
+  getFalApiKey, setFalApiKey as persistFalApiKey, clearFalApiKey,
+  getMeshyApiKey, setMeshyApiKey as persistMeshyApiKey, clearMeshyApiKey,
+} from '../lib/storage'
 import { testApiKey } from '../lib/nvidia'
 import { useTheme } from '../lib/theme'
 import { useI18n } from '../lib/i18n'
@@ -15,12 +19,16 @@ export function SettingsPage() {
   const [falApiKey, setFalApiKeyState] = useState('')
   const [showFalKey, setShowFalKey] = useState(false)
   const [falSaved, setFalSaved] = useState(false)
+  const [meshyApiKey, setMeshyApiKeyState] = useState('')
+  const [showMeshyKey, setShowMeshyKey] = useState(false)
+  const [meshySaved, setMeshySaved] = useState(false)
   const { theme, setTheme } = useTheme()
   const { language, setLanguage, t } = useI18n()
 
   useEffect(() => {
     getApiKey().then(setApiKeyState)
     getFalApiKey().then(setFalApiKeyState)
+    getMeshyApiKey().then(setMeshyApiKeyState)
   }, [])
 
   const handleSave = async () => {
@@ -55,6 +63,17 @@ export function SettingsPage() {
   const handleClearFal = async () => {
     await clearFalApiKey()
     setFalApiKeyState('')
+  }
+
+  const handleSaveMeshy = async () => {
+    await persistMeshyApiKey(meshyApiKey)
+    setMeshySaved(true)
+    setTimeout(() => setMeshySaved(false), 2000)
+  }
+
+  const handleClearMeshy = async () => {
+    await clearMeshyApiKey()
+    setMeshyApiKeyState('')
   }
 
   return (
@@ -190,6 +209,46 @@ export function SettingsPage() {
           </button>
           <button
             onClick={handleClearFal}
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-red-500 transition hover:bg-red-500/10"
+          >
+            <Trash2 className="h-4 w-4" />
+            {t('settings.apiKey.clear')}
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+        <div className="mb-4 flex items-center gap-2">
+          <Bone className="h-4.5 w-4.5 text-violet-500" />
+          <h2 className="text-sm font-semibold">{t('settings.meshyKey.title')}</h2>
+        </div>
+        <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">{t('settings.meshyKey.description')}</p>
+
+        <div className="relative">
+          <input
+            type={showMeshyKey ? 'text' : 'password'}
+            value={meshyApiKey}
+            onChange={(e) => setMeshyApiKeyState(e.target.value)}
+            placeholder="msy_..."
+            className="w-full rounded-xl border border-black/10 bg-neutral-50 px-4 py-3 pr-11 font-mono text-sm outline-none ring-violet-500/40 focus:ring-2 dark:border-white/10 dark:bg-neutral-950"
+          />
+          <button
+            onClick={() => setShowMeshyKey((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+          >
+            {showMeshyKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleSaveMeshy}
+            className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-violet-500/25 transition hover:opacity-90"
+          >
+            {meshySaved ? t('settings.apiKey.saved') : t('settings.apiKey.save')}
+          </button>
+          <button
+            onClick={handleClearMeshy}
             className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-red-500 transition hover:bg-red-500/10"
           >
             <Trash2 className="h-4 w-4" />

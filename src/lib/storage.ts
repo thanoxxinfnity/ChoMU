@@ -3,6 +3,7 @@ import type { ChomuSettings } from './types'
 
 const API_KEY_STORAGE_KEY = 'chomu.apiKey'
 const FAL_API_KEY_STORAGE_KEY = 'chomu.falApiKey'
+const MESHY_API_KEY_STORAGE_KEY = 'chomu.meshyApiKey'
 const THEME_STORAGE_KEY = 'chomu.theme'
 const LANGUAGE_STORAGE_KEY = 'chomu.language'
 
@@ -64,4 +65,22 @@ export async function getLanguage(): Promise<Language> {
 
 export async function setLanguage(language: Language): Promise<void> {
   await Preferences.set({ key: LANGUAGE_STORAGE_KEY, value: language })
+}
+
+/**
+ * Meshy's auto-rigging service. Optional and separate from the other keys —
+ * API access is only on their paid plans, so without one the Rig & Animate
+ * action simply stays unavailable.
+ */
+export async function getMeshyApiKey(): Promise<string> {
+  const { value } = await Preferences.get({ key: MESHY_API_KEY_STORAGE_KEY })
+  return value ?? ''
+}
+
+export async function setMeshyApiKey(key: string): Promise<void> {
+  await Preferences.set({ key: MESHY_API_KEY_STORAGE_KEY, value: key.trim() })
+}
+
+export async function clearMeshyApiKey(): Promise<void> {
+  await Preferences.remove({ key: MESHY_API_KEY_STORAGE_KEY })
 }

@@ -1,8 +1,9 @@
 import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls, useGLTF } from '@react-three/drei'
+import { OrbitControls, useGLTF, useAnimations } from '@react-three/drei'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { Loader2, RotateCw, Sun, Moon, AlertTriangle } from 'lucide-react'
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
+import { Loader2, RotateCw, Sun, Moon, AlertTriangle, Play, Pause } from 'lucide-react'
 import * as THREE from 'three'
 import clsx from 'clsx'
 
@@ -20,26 +21,31 @@ import clsx from 'clsx'
  */
 const NORMALIZED_SIZE = 2
 
-function Model({ url }: { url: string }) {
-  const { scene } = useGLTF(url)
+function Model({
+  url,
+  playing,
+  onAnimationsFound,
+}: {
+  url: string
+  playing: boolean
+  onAnimationsFound?: (count: number) => void
+}) {
+  const { scene, animations } = useGLTF(url)
+  const root = useRef<THREE.Group>(null)
 
-  const normalized = useMemo(() => {
-    const model = scene.clone(true)
+  const { model, scale, offset } = useMemo(() => {
+    // A plain .clone() detaches skinned meshes from their bones, so a rigged
+    // model would render in its bind pose and never animate. SkeletonUtils
+    // rebuilds the bone references along with the hierarchy.
+    const cloned = cloneSkinned(scene)
 
-    // Real TRELLIS meshes arrive with arbitrary extents and off-origin centers.
-    const box = new THREE.Box3().setFromObject(model)
+    // Real generated meshes arrive with arbitrary extents and off-origin centers.
+    const box = new THREE.Box3().setFromObject(cloned)
     const size = box.getSize(new THREE.Vector3())
     const center = box.getCenter(new THREE.Vector3())
     const maxDim = Math.max(size.x, size.y, size.z) || 1
 
-    model.position.sub(center)
-
-    // Scaling on a parent group keeps the centering offset above intact.
-    const group = new THREE.Group()
-    group.add(model)
-    group.scale.setScalar(NORMALIZED_SIZE / maxDim)
-
-    model.traverse((obj) => {
+    cloned.traverse((obj) => {
       const mesh = obj as THREE.Mesh
       if (!mesh.isMesh) return
       mesh.castShadow = true
@@ -52,10 +58,35 @@ function Model({ url }: { url: string }) {
       }
     })
 
-    return group
+    return {
+      model: cloned,
+      scale: NORMALIZED_SIZE / maxDim,
+      offset: new THREE.Vector3(-center.x, -center.y, -center.z),
+    }
   }, [scene])
 
-  return <primitive object={normalized} />
+  const { actions, names } = useAnimations(animations, root)
+
+  useEffect(() => {
+    onAnimationsFound?.(names.length)
+  }, [names.length, onAnimationsFound])
+
+  useEffect(() => {
+    if (!names.length) return
+    const action = actions[names[0]]
+    if (!action) return
+    if (playing) action.reset().fadeIn(0.2).play()
+    else action.fadeOut(0.2)
+    return () => {
+      action.fadeOut(0.1)
+    }
+  }, [actions, names, playing])
+
+  return (
+    <group ref={root} scale={scale}>
+      <primitive object={model} position={offset} />
+    </group>
+  )
 }
 
 /**
@@ -147,6 +178,15 @@ export function ModelViewer({
 }) {
   const [autoRotate, setAutoRotate] = useState(true)
   const [bright, setBright] = useState(true)
+  // Only meaningful for models that actually carry animation clips (a rigged
+  // export); static generated meshes never show these controls.
+  const [animationCount, setAnimationCount] = useState(0)
+  const [playing, setPlaying] = useState(true)
+
+  useEffect(() => {
+    setAnimationCount(0)
+    setPlaying(true)
+  }, [url])
 
   return (
     <div
@@ -176,7 +216,7 @@ export function ModelViewer({
             <OfflineEnvironment intensity={bright ? 1 : 0.45} />
 
             <Suspense fallback={null}>
-              <Model url={url} />
+              <Model url={url} playing={playing} onAnimationsFound={setAnimationCount} />
               {onThumbnail && <CaptureThumbnail onCapture={onThumbnail} />}
             </Suspense>
 
@@ -200,6 +240,15 @@ export function ModelViewer({
 
       {url && (
         <div className="absolute right-3 top-3 flex gap-2">
+          {animationCount > 0 && (
+            <button
+              onClick={() => setPlaying((v) => !v)}
+              className="flex h-9 w-9 items-center justify-center rounded-full glass text-violet-600 shadow-sm transition dark:text-violet-400"
+              title={playing ? 'Pause animation' : 'Play animation'}
+            >
+              {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            </button>
+          )}
           <button
             onClick={() => setAutoRotate((v) => !v)}
             className={clsx(
